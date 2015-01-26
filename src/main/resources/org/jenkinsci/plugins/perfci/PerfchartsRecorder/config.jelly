@@ -1,0 +1,25 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  <!--
+    This jelly script is used for per-project configuration.
+
+    See global.jelly for a general discussion about jelly script.
+  -->
+
+  <!--
+    Creates a text field that shows the value of the "name" property.
+    When submitted, it will be passed to the corresponding constructor parameter.
+  -->
+  <f:entry title="Input Files" field="inputPattern" description="specifying the ANT styled pattern for result files from performance testing and resource monitoring tool">
+    <f:textbox />
+  </f:entry>
+  <f:entry title="Time Zone" field="timeZone" description="default time zone for parsing logs">
+    	<f:textbox />
+  </f:entry>
+  <f:entry title="Start Time" field="fromTime" description="format: yyyy-MM-dd hh:mm:ss">
+    	<f:textbox />
+  </f:entry>
+  <f:entry title="End Time" field="toTime" description="format: yyyy-MM-dd hh:mm:ss">
+    	<f:textbox />
+  </f:entry>
+</j:jelly>
