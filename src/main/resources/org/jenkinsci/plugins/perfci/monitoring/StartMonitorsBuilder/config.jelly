@@ -1,0 +1,10 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+         xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+    <f:entry title="Monitors"
+           field="monitors">
+        <f:hetero-list name="monitors" hasHeader="true"
+                   descriptors="${descriptor.getMonitorDescriptors()}"
+                   items="${instance.monitors}"
+                   addCaption="Add a new monitor"/>
+    </f:entry>     
+</j:jelly>

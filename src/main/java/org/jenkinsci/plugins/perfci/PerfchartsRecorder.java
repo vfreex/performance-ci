@@ -5,6 +5,7 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.Action;
 import hudson.model.BuildListener;
+import hudson.model.Result;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.tasks.BuildStepDescriptor;
@@ -115,6 +116,10 @@ public class PerfchartsRecorder extends Recorder {
 	@Override
 	public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws IOException, InterruptedException {
+		if (build.getResult() != Result.SUCCESS){
+			LOGGER.warning("build.getResult(): " + build.getResult().toString()); 
+			return false;
+		}
 		DescriptorImpl desc = getDescriptor();
 		TimeZone tz = timeZone != null && !timeZone.isEmpty() ? TimeZone
 				.getTimeZone(timeZone)
