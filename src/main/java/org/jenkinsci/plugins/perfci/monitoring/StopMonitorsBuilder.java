@@ -58,51 +58,36 @@ public class StopMonitorsBuilder extends Builder {
 		// }
 
 		ParametersAction paraAction = build.getAction(ParametersAction.class);
-		ResourceMonitor.ResourceMonitorParameterValue para = (ResourceMonitor.ResourceMonitorParameterValue)paraAction.getParameter("monitors");
+		ResourceMonitor.ResourceMonitorParameterValue para = (ResourceMonitor.ResourceMonitorParameterValue) paraAction
+				.getParameter("monitors");
 		List<ResourceMonitor> monitors = para.getMonitors();
+		int stoppedMonitors = 0;
 		for (ResourceMonitor monitor : monitors) {
 			try {
-				LOGGER.info("Stopping monitor '" + monitor.getClass().getName() + "'...");
-				monitor.stop(build, launcher, listener);
-				LOGGER.info("Monitor '" + monitor.getClass().getName() + "' stopped.");
+				LOGGER.info("Stopping monitor '" + monitor.getClass().getName()
+						+ "'...");
+				if (!monitor.stop(build, launcher, listener)) {
+					LOGGER.warning("Something goes wrong when trying stopping Monitor '"
+							+ monitor.getClass().getName() + "'.");
+					continue;
+				}
+				++stoppedMonitors;
+				LOGGER.info("Monitor '" + monitor.getClass().getName()
+						+ "' stopped.");
 			} catch (Exception e) {
 				e.printStackTrace();
-				LOGGER.info("Opps! Something went wrong when trying stopping monitor '" + monitor.getClass().getName() + "'!");
+				LOGGER.warning("Opps! Something went wrong when trying stopping monitor '"
+						+ monitor.getClass().getName() + "'!");
 				return false;
 			}
 		}
-		
-		//		// MapParameterValue mapParam1 = (MapParameterValue)
-//		// actions.getParameter(ResourceMonitor.ParameterName);
-//
-//		try {
-//			File rootpath = build.getRootDir();
-//			File monitoringDir = new File(rootpath.getAbsoluteFile()
-//					+ "/performance-reports/monitoring");
-//			if (!monitoringDir.exists()) {
-//				monitoringDir.mkdirs();
-//			}
-//			Map allAvgDatas = new HashMap();
-//
-//			List<ResourceMonitor> monitors = (List<ResourceMonitor>) mapParam1
-//					.getData().get("Monitors");
-//			for (ResourceMonitor resourceMonitor : monitors) {
-//				allAvgDatas.putAll(resourceMonitor.stopMonitoring(build,
-//						launcher, listener));
-//			}
-//
-//			// mapParam1.clear();
-//			// mapParam1 = null;
-//
-//			// ObjectMapper mapper = new ObjectMapper();
-//			// mapper.writeValue(new File(monitoringDir.getAbsolutePath()
-//			// +"/resources.json"), allAvgDatas);
-//		} catch (IOException ex) {
-//			LOGGER.log(Level.SEVERE,
-//					null, ex);
-//		}
-		LOGGER.info("All monitors stopped.");
-		return true;
+		if (stoppedMonitors == monitors.size()) {
+			LOGGER.info("All monitors stopped.");
+			return true;
+		} else {
+			LOGGER.warning("Opps! Something went wrong when trying stopping monitors! Mark this build failure.");
+			return false;
+		}
 	}
 
 	// Overridden for better type safety.

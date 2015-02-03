@@ -27,6 +27,10 @@ public interface ResourceMonitor extends Describable<ResourceMonitor> {
 
 	}
 	public static class ResourceMonitorParameterValue extends ParameterValue {
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -970277688612962704L;
 		private List<ResourceMonitor> monitors;
 		protected ResourceMonitorParameterValue(String name) {
 			super(name);

@@ -57,7 +57,8 @@ public class NmonMonitor implements ResourceMonitor,
 	private final String name;
 	private final String password;
 	private final String interval;
-	private Object monfile;
+	private final String outputPath;
+	// private Object monfile;
 	private final static int TIMEOUT = 30000;
 	private final static int MAX_TRIES = 5;
 
@@ -65,11 +66,12 @@ public class NmonMonitor implements ResourceMonitor,
 	// "DataBoundConstructor"
 	@DataBoundConstructor
 	public NmonMonitor(String host, String name, String password,
-			String interval) {
+			String interval, String outputPath) {
 		this.host = host;
 		this.name = name;
 		this.password = password;
 		this.interval = interval;
+		this.outputPath = outputPath;
 	}
 
 	/**
@@ -108,6 +110,7 @@ public class NmonMonitor implements ResourceMonitor,
 	}
 
 	private boolean tryStart(AbstractBuild<?, ?> build) throws IOException {
+		String projectDir = getProjectDir(build);
 		SSHClient client = new SSHClient();
 		client.addHostKeyVerifier(new PromiscuousVerifier());
 		try {
@@ -162,7 +165,21 @@ public class NmonMonitor implements ResourceMonitor,
 							+ remoteLogDir);
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
-			return cmd.getExitStatus() == 0;
+			if (cmd.getExitStatus() != 0)
+				return false;
+			session = client.startSession();
+			cmd = session
+					.exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+							+ projectDir + "' | awk '{print $2}'");
+			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			session.close();
+			if (cmd.getExitStatus() != 0)
+				return false;
+			if (IOUtils.readFully(cmd.getInputStream()).toString().trim()
+					.isEmpty()) {
+				return false;
+			}
+			return true;
 		} catch (IOException ex) {
 			return false;
 		} finally {
@@ -208,15 +225,15 @@ public class NmonMonitor implements ResourceMonitor,
 			Session.Command cmd;
 			Session session = client.startSession();
 			cmd = session
-					.exec("sync && kill `ps aux | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+					.exec("sync && kill `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
 							+ projectDir + "' | awk '{print $2}'`");
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
-			if (cmd.getExitStatus() != 0)
+			if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
 				return false;
 			session = client.startSession();
 			cmd = session
-					.exec("sleep 3 && ps aux | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+					.exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
 							+ projectDir + "' | awk '{print $2}'");
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
@@ -227,15 +244,15 @@ public class NmonMonitor implements ResourceMonitor,
 				LOGGER.info("Cannot stop, try 'kill -s INT'...");
 				session = client.startSession();
 				cmd = session
-						.exec("sync && kill -s INT `ps aux | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+						.exec("sync && kill -s INT `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
 								+ projectDir + "' | awk '{print $2}'`");
 				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 				session.close();
-				if (cmd.getExitStatus() != 0)
+				if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
 					return false;
 				session = client.startSession();
 				cmd = session
-						.exec("sleep 5 && ps aux | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+						.exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
 								+ projectDir + "' | awk '{print $2}'");
 				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 				session.close();
@@ -246,15 +263,15 @@ public class NmonMonitor implements ResourceMonitor,
 					LOGGER.info("Cannot stop, try 'kill -s KILL'...");
 					session = client.startSession();
 					cmd = session
-							.exec("sync && kill -s KILL `ps aux | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+							.exec("sync && kill -s KILL `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
 									+ projectDir + "' | awk '{print $2}'`");
 					cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 					session.close();
-					if (cmd.getExitStatus() != 0)
+					if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
 						return false;
 					session = client.startSession();
 					cmd = session
-							.exec("sleep 5 && ps aux | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+							.exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
 									+ projectDir + "' | awk '{print $2}'");
 					cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 					session.close();
@@ -268,119 +285,23 @@ public class NmonMonitor implements ResourceMonitor,
 				}
 			}
 
-			String pathOnAgent = build.getWorkspace().getRemote()
-					+ "/monitoring";
-
-			LOGGER.info("Collecting logs: to '" + pathOnAgent + "'...");
+			String relativePathForNMONFiles = outputPath == null
+					|| outputPath.isEmpty() ? "monitoring" : outputPath;
+			String pathOnAgent = relativePathForNMONFiles.startsWith("/")
+					|| relativePathForNMONFiles.startsWith("file:") ? relativePathForNMONFiles
+					: build.getWorkspace().getRemote() + File.separator
+							+ relativePathForNMONFiles;
+			LOGGER.info("Copy NMON logs to agent '" + pathOnAgent + "'...");
 			new File(pathOnAgent).mkdirs();
-			client.newSCPFileTransfer().download(getOutputDir(build),
-					pathOnAgent);
-
+			client.newSCPFileTransfer().download(
+					getOutputDir(build) + File.separator,
+					pathOnAgent + File.separator);
 			return true;
-
-			// fileName = IOUtils.readFully(cmd.getInputStream()).toString();
-			// System.out.println("----------------------");
-			// System.out.println(fileName.trim());
-			// String tmpPlace = "/tmp/" + build.getProject().getName();
-			// if (fileName != null) {
-			// FilePath parent = new FilePath(new File(tmpPlace));
-			// if (!parent.exists()) {
-			// parent.mkdirs();
-			// }
-			//
-			// client.newSCPFileTransfer().download(fileName.trim(), tmpPlace);
-			//
-			// // copy nmon file into builds
-			// // FilePath[] nmons = parent.list("*.nmon");
-			// // for (FilePath src : nmons) {
-			// // String localMonFileName = src.getName();
-			// // final File localMonFile =
-			// // PerformancePublisher.getPerformanceReport(build,
-			// // "monitoring",
-			// // localMonFileName);
-			// //
-			// // src.copyTo(new FilePath(localMonFile));
-			// // }
-			//
-			// parent.deleteRecursive();
-			// }
 		} catch (IOException ex) {
 			return false;
 		} finally {
 			client.close();
 		}
-	}
-
-	/**
-	 * stop monitor
-	 *
-	 * @param host
-	 * @param name
-	 * @param password
-	 * @param build
-	 * @return
-	 * @throws IOException
-	 */
-	private String stopMonitoring(String host, String name, String password,
-			AbstractBuild build) throws IOException {
-		SSHClient client = new SSHClient();
-		client.addHostKeyVerifier(new PromiscuousVerifier());
-		client.connect(host);
-		client.authPassword(name, password);
-
-		net.schmizz.sshj.connection.channel.direct.Session.Command cmd;
-		net.schmizz.sshj.connection.channel.direct.Session session = client
-				.startSession();
-
-		try {
-			cmd = session
-					.exec("kill -9  `ps aux | grep nmon | awk '{print $2}'`");
-			cmd.join(20, TimeUnit.SECONDS);
-		} finally {
-			session.close();
-		}
-
-		session = client.startSession();
-		String fileName = null;
-		try {
-			cmd = session
-					.exec("ls -lrt /tmp/*.nmon | awk 'END{print}' | awk '{print $NF}'");
-			cmd.join(20, TimeUnit.SECONDS);
-			fileName = IOUtils.readFully(cmd.getInputStream()).toString();
-			System.out.println("----------------------");
-			System.out.println(fileName.trim());
-
-			String tmpPlace = "/tmp/" + build.getProject().getName();
-			if (fileName != null) {
-				FilePath parent = new FilePath(new File(tmpPlace));
-				if (!parent.exists()) {
-					parent.mkdirs();
-				}
-
-				client.newSCPFileTransfer().download(fileName.trim(), tmpPlace);
-
-				// copy nmon file into builds
-				// FilePath[] nmons = parent.list("*.nmon");
-				// for (FilePath src : nmons) {
-				// String localMonFileName = src.getName();
-				// final File localMonFile =
-				// PerformancePublisher.getPerformanceReport(build,
-				// "monitoring",
-				// localMonFileName);
-				//
-				// src.copyTo(new FilePath(localMonFile));
-				// }
-
-				parent.deleteRecursive();
-			}
-		} catch (InterruptedException ex) {
-			// Logger.getLogger(StopMonitors.class.getName()).log(Level.SEVERE,
-			// null, ex);
-		} finally {
-			session.close();
-			client.disconnect();
-		}
-		return fileName;
 	}
 
 	@Extension
@@ -430,5 +351,9 @@ public class NmonMonitor implements ResourceMonitor,
 	public DescriptorImpl getDescriptor() {
 		return (DescriptorImpl) Jenkins.getInstance().getDescriptor(
 				NmonMonitor.class);
+	}
+
+	public String getOutputPath() {
+		return outputPath;
 	}
 }
