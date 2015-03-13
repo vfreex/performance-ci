@@ -22,4 +22,7 @@
   <f:entry title="End Time" field="toTime" description="format: yyyy-MM-dd hh:mm:ss">
     	<f:textbox />
   </f:entry>
+  <f:entry title="Excluded transaction" field="excludedTransactionPattern" description="A regular expression which specifying excluded transactions for average response time and TPS calculation. ex: ping\.html">
+    	<f:textbox />
+  </f:entry>
 </j:jelly>

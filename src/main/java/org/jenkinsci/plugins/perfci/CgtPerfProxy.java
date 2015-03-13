@@ -21,10 +21,12 @@ public class CgtPerfProxy {
 	private String monoReportPath;
 	private String fromTime;
 	private String toTime;
+	private String excludedTransactionPattern;
 
 	public CgtPerfProxy(String cgtHome, String cgtLib, String cgtLog,
 			TimeZone timeZone, String inputDir, String outputDir,
-			String monoReportPath, String fromTime, String toTime) {
+			String monoReportPath, String fromTime, String toTime,
+			String excludedTransactionPattern) {
 		this.cgtHome = cgtHome;
 		this.cgtLib = cgtLib;
 		this.cgtLog = cgtLog;
@@ -34,6 +36,7 @@ public class CgtPerfProxy {
 		this.monoReportPath = monoReportPath;
 		this.fromTime = fromTime;
 		this.toTime = toTime;
+		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
 	public boolean run() throws IOException, InterruptedException {
@@ -55,6 +58,10 @@ public class CgtPerfProxy {
 		if (toTime != null && !toTime.isEmpty()) {
 			arguments.add("-t");
 			arguments.add(toTime);
+		}
+		if (excludedTransactionPattern != null && !excludedTransactionPattern.isEmpty()) {
+			arguments.add("-e");
+			arguments.add(excludedTransactionPattern);
 		}
 		arguments.add(inputDir);
 		ProcessBuilder cgtProcessBuilder = new ProcessBuilder(arguments);
@@ -131,6 +138,14 @@ public class CgtPerfProxy {
 
 	public void setToTime(String toTime) {
 		this.toTime = toTime;
+	}
+
+	public String getExcludedTransactionPattern() {
+		return excludedTransactionPattern;
+	}
+
+	public void setExcludedTransactionPattern(String excludedTransactionPattern) {
+		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
 }

@@ -102,15 +102,17 @@ public class PerfchartsRecorder extends Recorder {
 	private String timeZone;
 	private String fromTime;
 	private String toTime;
+	private String excludedTransactionPattern;
 
 	@DataBoundConstructor
 	public PerfchartsRecorder(String inputPattern, String timeZone,
-			String fromTime, String toTime) {
+			String fromTime, String toTime, String excludedTransactionPattern) {
 		this.inputPattern = inputPattern != null && !inputPattern.isEmpty() ? inputPattern
 				: "**/*.jtl;**/*.nmon;**/*.load;**/*.conf";
 		this.timeZone = timeZone;
 		this.fromTime = fromTime;
 		this.toTime = toTime;
+		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
 	@Override
@@ -146,7 +148,7 @@ public class PerfchartsRecorder extends Recorder {
 				Constants.MONO_REPORT_NAME);
 		CgtPerfProxy cgtPerf = new CgtPerfProxy(desc.getCgtHome(),
 				desc.getCgtLib(), desc.getCgtLog(), tz, inputPath, outputPath,
-				monoReportFile, fromTime, toTime);
+				monoReportFile, fromTime, toTime, excludedTransactionPattern);
 
 		if (!cgtPerf.run()) {
 			LOGGER.severe("Perf&Res report generated failed.");
@@ -238,6 +240,14 @@ public class PerfchartsRecorder extends Recorder {
 
 	public void setToTime(String toTime) {
 		this.toTime = toTime;
+	}
+
+	public String getExcludedTransactionPattern() {
+		return excludedTransactionPattern;
+	}
+
+	public void setExcludedTransactionPattern(String excludedTransactionPattern) {
+		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
 }
