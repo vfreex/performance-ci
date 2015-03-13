@@ -157,8 +157,7 @@ public class NmonMonitor implements ResourceMonitor,
 			}
 			String remoteLogDir = getOutputDir(build);
 			session = client.startSession();
-			cmd = session
-					.exec("mkdir -p '"
+			cmd = session.exec("mkdir -p '"
 							+ remoteLogDir
 							+ "' && chmod +x /tmp/jenkins-perfci/bin/nmon && /tmp/jenkins-perfci/bin/nmon -f -t -s"
 							+ Integer.parseInt(interval) + " -c64080 -m "

@@ -50,12 +50,14 @@ ChartGeneration.compositeReport = {};
 			report.charts = [ {
 				title : "Composite Chart",
 				subtitle : "",
-				xaxisMode : "TIME",
-				series : [],
-				yaxes : [],
-				yaxesMap : {},
+				xaxisMode : "TIME"
 			} ];
 		}
+		var compositeChart = report.charts[0];
+		compositeChart.series = [];
+		compositeChart.yaxes = [];
+		compositeChart.yaxesMap = {};
+		compositeChart.xaxisTicks = null;
 		drawReport($(".report"), report);
 		var $control_pad = $(".control_pad");
 		var $placeholder = $(".placeholder");
@@ -71,25 +73,27 @@ ChartGeneration.compositeReport = {};
 		var yaxesMap = compositeChart.yaxesMap;
 		var yaxes = compositeChart.yaxes;
 		var line = tag.line;
+		var yLabel = line._unit && line._unit.value ? tag.chart.yLabel
+				+ " (" + line._unit.value + ")" : tag.chart.yLabel;
+		var useWhichYaxis = yaxesMap[yLabel]; // starts from 1 if exists
 		if ($this.is(":checked")) {
-			var yLabel = line._unit && line._unit.value ? tag.chart.yLabel
-					+ " (" + line._unit.value + ")" : tag.chart.yLabel
-			if (!yaxesMap[yLabel]) {
+			if (!useWhichYaxis) {
 				yaxes.push({
 					position : yaxes.length & 1 ? "right" : "left",
-					axisLabel : yLabel
+					axisLabel : yLabel,
+					_used: 0
 				});
-				yaxesMap[yLabel] = yaxes.length;
+				useWhichYaxis = yaxesMap[yLabel] = yaxes.length;
 			}
+			++yaxes[useWhichYaxis - 1]._used;
 			series.push({
-				// label : tag.report.title + "<br/>" + tag.chart.title
-				// + "<br/>" + line.label,
 				label : tag.chart.subtitle ? tag.chart.subtitle + "-"
 						+ line.label : line.label,
 				data : line.data,
-				yaxis : yaxesMap[yLabel],
+				yaxis : useWhichYaxis,
 				color : tag.index
 			});
+			
 		} else {
 			for (var i = 0; i < series.length; ++i) {
 				if (series[i].data === line.data) {
@@ -97,8 +101,25 @@ ChartGeneration.compositeReport = {};
 					break;
 				}
 			}
+			if (--yaxes[useWhichYaxis - 1]._used <= 0) {
+				for (var i = useWhichYaxis; i < yaxes.length; ++i) {
+					yaxes[i].position = yaxes[i].position == "right" ? "left" : "right";
+					--yaxesMap[yaxes[i].axisLabel]
+					yaxes[i - 1] = yaxes[i];
+				}
+				yaxesMap[yLabel] = 0;
+				yaxes.pop();
+				for (var i = 0; i < series.length; ++i) {
+					if (series[i].yaxis > useWhichYaxis)
+						--series[i].yaxis;
+				}
+			}
 		}
+		if (compositeChart.xaxisMode == "INTEGER" 
+			&& $this.is(":checked"))
+			compositeChart.xaxisTicks = tag.chart.xaxisTicks;
 		draw(tag.$placeholder, tag.$legend, compositeChart, function(options) {
+			options.yaxesMap = yaxesMap;
 			options.yaxes = yaxes;
 			return options;
 		});
@@ -109,6 +130,9 @@ ChartGeneration.compositeReport = {};
 		var $placeholder = $this.data("$placeholder");
 		var compositeChart = ChartGeneration.compositeReport.charts[0];
 		compositeChart.series = [];
+		compositeChart.yaxes = [];
+		compositeChart.yaxesMap = {};
+		compositeChart.xaxisTicks = null;
 		$(".cb_control_pad").prop("checked", false);
 		redraw($placeholder, $placeholder.data("plot"), compositeChart);
 	}
@@ -158,6 +182,8 @@ ChartGeneration.compositeReport = {};
 				$("<dd/>").append($chartList).appendTo($rootList);
 				$("<dt/>").text(chart.title).appendTo($chartList);
 				var series = chart.series;
+				if (!series)
+					continue;
 				for (var k = 0; k < series.length; ++k) {
 					var line = series[k];
 					var $checkbox = $(
@@ -333,10 +359,17 @@ ChartGeneration.compositeReport = {};
 		case "INTEGER":
 			options.xaxis = {
 				minTickSize : 1,
-				tickSize : 1,
-				tickFormatter : function(num, _) {
+				tickSize : 1
+				/*tickFormatter : function(num, _) {
 					return Math.round(num);
-				}
+				}*/
+			}
+			if (chart.xaxisTicks) {
+				options.xaxis.ticks = chart.xaxisTicks;
+			} else {
+				options.xaxis.tickFormatter = function(num, _) {
+					return Math.round(num);
+				};
 			}
 			break;
 		default:
