@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
@@ -22,6 +23,7 @@ public class CgtPerfProxy {
 	private String fromTime;
 	private String toTime;
 	private String excludedTransactionPattern;
+	private PrintStream redirectedOutput;
 
 	public CgtPerfProxy(String cgtHome, String cgtLib, String cgtLog,
 			TimeZone timeZone, String inputDir, String outputDir,
@@ -59,7 +61,8 @@ public class CgtPerfProxy {
 			arguments.add("-t");
 			arguments.add(toTime);
 		}
-		if (excludedTransactionPattern != null && !excludedTransactionPattern.isEmpty()) {
+		if (excludedTransactionPattern != null
+				&& !excludedTransactionPattern.isEmpty()) {
 			arguments.add("-e");
 			arguments.add(excludedTransactionPattern);
 		}
@@ -73,22 +76,31 @@ public class CgtPerfProxy {
 		if (cgtLog != null && !cgtLog.isEmpty())
 			cgtProcessBuilder.environment().put("CGT_LOG", cgtLog);
 
-		LOGGER.info("generating report from '" + inputDir + "'...");
-
+		LOGGER.info("Generating report from '" + inputDir + "'...");
+		if (redirectedOutput != null)
+			redirectedOutput.println("Generating report from '" + inputDir
+					+ "'...");
 		Process cgtProcess = cgtProcessBuilder.start();
+		if (redirectedOutput != null) {
+			BufferedReader reader = new BufferedReader(new InputStreamReader(
+					cgtProcess.getErrorStream()));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				redirectedOutput.println(line);
+			}
+		}
 		int returnCode = cgtProcess.waitFor();
 		boolean success = returnCode == 0;
-		BufferedReader reader = new BufferedReader(new InputStreamReader(
-				cgtProcess.getInputStream()));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			System.out.println(line);
-		}
-		reader = new BufferedReader(new InputStreamReader(
-				cgtProcess.getErrorStream()));
-		while ((line = reader.readLine()) != null) {
-			System.err.println(line);
-		}
+
+		// String line;
+		// while ((line = reader.readLine()) != null) {
+		// System.out.println(line);
+		// }
+		// reader = new BufferedReader(new InputStreamReader(
+		// cgtProcess.getErrorStream()));
+		// while ((line = reader.readLine()) != null) {
+		// System.err.println(line);
+		// }
 		return success;
 	}
 
@@ -148,4 +160,11 @@ public class CgtPerfProxy {
 		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
+	public PrintStream getRedirectedOutput() {
+		return redirectedOutput;
+	}
+
+	public void setRedirectedOutput(PrintStream redirectedOutput) {
+		this.redirectedOutput = redirectedOutput;
+	}
 }

@@ -63,16 +63,20 @@ public class StartMonitorsBuilder extends Builder {
 		for (ResourceMonitor monitor : monitors) {
 			try {
 				LOGGER.info("Start monitor '" + monitor.getClass().getName() + "'...");
+				listener.getLogger().println("INFO: Start monitor '" + monitor.getClass().getName() + "'...");
 				monitor.start(build, launcher, listener);
 				LOGGER.info("Monitor '" + monitor.getClass().getName() + "' started.");
+				listener.getLogger().println("INFO: Monitor '" + monitor.getClass().getName() + "' started.");
 			} catch (Exception e) {
 				e.printStackTrace();
-				LOGGER.info("Opps! Something went wrong when trying starting monitor '"+ monitor.getClass().getName() + "'!");
+				LOGGER.warning("Opps! Something went wrong when trying starting monitor '"+ monitor.getClass().getName() + "'!");
+				listener.getLogger().println("WARNING: Opps! Something went wrong when trying starting monitor '"+ monitor.getClass().getName() + "'!");
 				return false;
 			}
 		}
 		build.addAction(new ParametersAction(new ResourceMonitor.ResourceMonitorParameterValue("monitors", monitors)));
 		LOGGER.info("All monitors started.");
+		listener.getLogger().println("INFO: All monitors started.");
 		return true;
 	}
 

@@ -13,10 +13,7 @@ import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -134,11 +131,14 @@ public class PerfchartsRecorder extends Recorder {
 				inputPattern);
 		if (remoteFiles.isEmpty()) {
 			LOGGER.warning("No test results found.");
+			listener.getLogger().println("WARNING: No test results found.");
 			return false;
 		}
-		LOGGER.info("Copy test results to master...");
+		LOGGER.info("Copying test results to master...");
+		listener.getLogger().println("INFO: Copying test results to master...");
 		IOHelpers.copyToBuildDir(build, remoteFiles);
-		LOGGER.info("Copy test results complete.");
+		LOGGER.info("Copying test results complete.");
+		listener.getLogger().println("INFO: Copying test results complete.");
 		String buildPath = build.getRootDir().getAbsolutePath();
 		String inputPath = IOHelpers.concatPathParts(buildPath,
 				Constants.INPUT_DIR_RELATIVE_PATH);
@@ -149,46 +149,15 @@ public class PerfchartsRecorder extends Recorder {
 		CgtPerfProxy cgtPerf = new CgtPerfProxy(desc.getCgtHome(),
 				desc.getCgtLib(), desc.getCgtLog(), tz, inputPath, outputPath,
 				monoReportFile, fromTime, toTime, excludedTransactionPattern);
-
+		cgtPerf.setRedirectedOutput(listener.getLogger());
 		if (!cgtPerf.run()) {
-			LOGGER.severe("Perf&Res report generated failed.");
+			listener.getLogger().println("Perf&Res report generated failed.");
+			LOGGER.severe("SEVERE: Perf&Res report generated failed.");
 			return false;
 		}
 		build.addAction(new PerfchartsBuildAction(build));
+		listener.getLogger().println("INFO: Perf&Res report generated successfully.");
 		LOGGER.info("Perf&Res report generated successfully.");
-
-//		String trendOutputPath = IOHelpers.concatPathParts(buildPath,
-//				Constants.TREND_DIR_RELATIVE_PATH);
-//		String trendMonoReportFile = IOHelpers.concatPathParts(trendOutputPath,
-//				Constants.TREND_MONO_REPORT_NAME);
-//		String trendInputReportFile = IOHelpers.concatPathParts(buildPath,
-//				Constants.TREND_INPUT_RELATIVE_PATH);
-//		new File(IOHelpers.concatPathParts(buildPath,
-//				Constants.TREND_DIR_RELATIVE_PATH)).mkdirs();
-//		File trendInputFile = new File(trendInputReportFile);
-//		trendInputFile.delete();
-//		OutputStreamWriter trendInputWriter = new OutputStreamWriter(
-//				new FileOutputStream(trendInputFile));
-//		AbstractProject<?, ?> project = build.getProject();
-//		for (AbstractBuild<?, ?> b : project.getBuilds()) {
-//			trendInputWriter.write(Integer.toString(b.number));
-//			trendInputWriter.write(",");
-//			trendInputWriter.write(IOHelpers.concatPathParts(b.getRootDir()
-//					.getAbsolutePath(), Constants.OUTPUT_DIR_RELATIVE_PATH,
-//					"tmp", "subreports", "Performance.json"));
-//			trendInputWriter.write("\n");
-//		}
-//		trendInputWriter.flush();
-//		trendInputWriter.close();
-//		CgtTrendProxy cgtTrend = new CgtTrendProxy(desc.getCgtHome(),
-//				desc.getCgtLib(), desc.getCgtLog(), tz, trendInputReportFile,
-//				trendOutputPath, trendMonoReportFile, null, null);
-//		if (!cgtTrend.run()) {
-//			LOGGER.warning("Perf trend report generated failed.");
-//			// return false;
-//		} else {
-//			LOGGER.info("Perf trend report generated successfully.");
-//		}
 		return true;
 	}
 

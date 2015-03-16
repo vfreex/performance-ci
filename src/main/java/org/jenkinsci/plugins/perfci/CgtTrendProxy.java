@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
@@ -21,6 +22,7 @@ public class CgtTrendProxy {
 	private String monoReportPath;
 	private String fromTime;
 	private String toTime;
+	private PrintStream redirectedOutput;
 
 	public CgtTrendProxy(String cgtHome, String cgtLib, String cgtLog,
 			TimeZone timeZone, String inputFile, String outputDir,
@@ -66,22 +68,22 @@ public class CgtTrendProxy {
 		if (cgtLog != null && !cgtLog.isEmpty())
 			cgtProcessBuilder.environment().put("CGT_LOG", cgtLog);
 
-		LOGGER.info("generating trend report from '" + inputFile + "'...");
+		LOGGER.info("Generating trend report from '" + inputFile + "'...");
+		if (redirectedOutput != null)
+			redirectedOutput.println("INFO: Generating trend report from '"
+					+ inputFile + "'...");
 
 		Process cgtProcess = cgtProcessBuilder.start();
+		if (redirectedOutput != null) {
+			BufferedReader reader = new BufferedReader(new InputStreamReader(
+					cgtProcess.getErrorStream()));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				System.err.println(line);
+			}
+		}
 		int returnCode = cgtProcess.waitFor();
 		boolean success = returnCode == 0;
-		BufferedReader reader = new BufferedReader(new InputStreamReader(
-				cgtProcess.getInputStream()));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			System.out.println(line);
-		}
-		reader = new BufferedReader(new InputStreamReader(
-				cgtProcess.getErrorStream()));
-		while ((line = reader.readLine()) != null) {
-			System.err.println(line);
-		}
 		return success;
 	}
 
@@ -131,6 +133,14 @@ public class CgtTrendProxy {
 
 	public void setToTime(String toTime) {
 		this.toTime = toTime;
+	}
+
+	public PrintStream getRedirectedOutput() {
+		return redirectedOutput;
+	}
+
+	public void setRedirectedOutput(PrintStream redirectedOutput) {
+		this.redirectedOutput = redirectedOutput;
 	}
 
 }

@@ -25,6 +25,7 @@ import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
+import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.InMemorySourceFile;
 
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -96,25 +97,42 @@ public class NmonMonitor implements ResourceMonitor,
 	@Override
 	public boolean start(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws Exception {
-		for (int i = 0; i < MAX_TRIES;) {
-			LOGGER.info("Starting NMON monitor... (try " + ++i + " of "
-					+ MAX_TRIES + ")");
-			if (tryStart(build)) {
-				LOGGER.info("NMON monitor started.");
-				return true;
+		try {
+			for (int i = 0; i < MAX_TRIES;) {
+				LOGGER.info("Starting NMON monitor... (try " + ++i + " of "
+						+ MAX_TRIES + ")");
+				listener.getLogger().println(
+						"INFO: Starting NMON monitor... (try " + ++i + " of "
+								+ MAX_TRIES + ")");
+				if (tryStart(build, listener)) {
+					LOGGER.info("INFO: NMON monitor started.");
+					listener.getLogger().println("INFO: NMON monitor started.");
+					return true;
+				}
+				LOGGER.warning("Fail to start NMON monitor.");
+				listener.getLogger().println(
+						"WARNING: Fail to start NMON monitor.");
 			}
-			LOGGER.warning("Fail to start NMON monitor.");
+		} catch (UserAuthException ex) {
+			LOGGER.warning("Authentication error.");
+			listener.getLogger().println("ERROR: Authentication error.");
 		}
 		LOGGER.warning("Cannot start NMON monitor. Give up.");
+		listener.getLogger().println(
+				"WARNING: Cannot start NMON monitor. Give up.");
 		return false;
 	}
 
-	private boolean tryStart(AbstractBuild<?, ?> build) throws IOException {
+	private boolean tryStart(AbstractBuild<?, ?> build, BuildListener listener)
+			throws IOException {
 		String projectDir = getProjectDir(build);
 		SSHClient client = new SSHClient();
 		client.addHostKeyVerifier(new PromiscuousVerifier());
 		try {
+			listener.getLogger().println(
+					"INFO: Connecting to host \"" + host + "\"...");
 			client.connect(host);
+			listener.getLogger().println("INFO: Authenticating...");
 			if (password == null || password.isEmpty())
 				client.authPublickey(name);
 			else
@@ -126,6 +144,8 @@ public class NmonMonitor implements ResourceMonitor,
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
 			if (cmd.getExitStatus() == 2) {
+				listener.getLogger().println(
+						"INFO: NMON does not exist. Uploading...");
 				session = client.startSession();
 				cmd = session.exec("mkdir -p /tmp/jenkins-perfci/bin");
 				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
@@ -155,9 +175,11 @@ public class NmonMonitor implements ResourceMonitor,
 					}
 				}, "/tmp/jenkins-perfci/bin/");
 			}
+			listener.getLogger().println("INFO: Starting NMON deamon...");
 			String remoteLogDir = getOutputDir(build);
 			session = client.startSession();
-			cmd = session.exec("mkdir -p '"
+			cmd = session
+					.exec("mkdir -p '"
 							+ remoteLogDir
 							+ "' && chmod +x /tmp/jenkins-perfci/bin/nmon && /tmp/jenkins-perfci/bin/nmon -f -t -s"
 							+ Integer.parseInt(interval) + " -c64080 -m "
@@ -179,6 +201,8 @@ public class NmonMonitor implements ResourceMonitor,
 				return false;
 			}
 			return true;
+		} catch (UserAuthException ex) {
+			throw ex;
 		} catch (IOException ex) {
 			return false;
 		} finally {
@@ -198,29 +222,39 @@ public class NmonMonitor implements ResourceMonitor,
 	@Override
 	public boolean stop(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws IOException {
-		for (int i = 0; i < MAX_TRIES;) {
-			LOGGER.info("Stopping NMON monitors... (try " + ++i + " of "
-					+ MAX_TRIES + ")");
-			if (tryStop(build)) {
-				LOGGER.info("NMON monitors stopped.");
-				return true;
+		try {
+			for (int i = 0; i < MAX_TRIES;) {
+				LOGGER.info("Stopping NMON monitors... (try " + ++i + " of "
+						+ MAX_TRIES + ")");
+				if (tryStop(build, listener)) {
+					LOGGER.info("NMON monitors stopped.");
+					return true;
+				}
+				LOGGER.warning("Fail to stop NMON monitors.");
 			}
-			LOGGER.warning("Fail to stop NMON monitors.");
+		} catch (UserAuthException ex) {
+			LOGGER.warning("Authentication error.");
+			listener.getLogger().println("ERROR: Authentication error.");
 		}
 		LOGGER.warning("Cannot stop NMON monitors. Give up.");
 		return false;
 	}
 
-	public boolean tryStop(AbstractBuild<?, ?> build) throws IOException {
+	public boolean tryStop(AbstractBuild<?, ?> build, BuildListener listener)
+			throws IOException {
 		String projectDir = getProjectDir(build);
 		SSHClient client = new SSHClient();
 		try {
 			client.addHostKeyVerifier(new PromiscuousVerifier());
+			listener.getLogger().println(
+					"INFO: Connecting to host \"" + host + "\"...");
 			client.connect(host);
+			listener.getLogger().println("INFO: Authenticating...");
 			if (password == null || password.isEmpty())
 				client.authPublickey(name);
 			else
 				client.authPassword(name, password);
+			listener.getLogger().println("INFO: Trying killing NMON deamon...");
 			Session.Command cmd;
 			Session session = client.startSession();
 			cmd = session
@@ -241,6 +275,8 @@ public class NmonMonitor implements ResourceMonitor,
 			if (!IOUtils.readFully(cmd.getInputStream()).toString().trim()
 					.isEmpty()) {
 				LOGGER.info("Cannot stop, try 'kill -s INT'...");
+				listener.getLogger().println(
+						"INFO: Cannot stop, try 'kill -s INT'...");
 				session = client.startSession();
 				cmd = session
 						.exec("sync && kill -s INT `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
@@ -260,6 +296,8 @@ public class NmonMonitor implements ResourceMonitor,
 				if (!IOUtils.readFully(cmd.getInputStream()).toString().trim()
 						.isEmpty()) {
 					LOGGER.info("Cannot stop, try 'kill -s KILL'...");
+					listener.getLogger().println(
+							"INFO: Cannot stop, try 'kill -s KILL'...");
 					session = client.startSession();
 					cmd = session
 							.exec("sync && kill -s KILL `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
@@ -279,6 +317,9 @@ public class NmonMonitor implements ResourceMonitor,
 					if (!IOUtils.readFully(cmd.getInputStream()).toString()
 							.trim().isEmpty()) {
 						LOGGER.info("Oops! Still cannot stop. That was strange. Give up this try.");
+						listener.getLogger()
+								.println(
+										"WARNING: Still cannot stop. That was strange. Give up this try.");
 						return false;
 					}
 				}
@@ -290,12 +331,18 @@ public class NmonMonitor implements ResourceMonitor,
 					|| relativePathForNMONFiles.startsWith("file:") ? relativePathForNMONFiles
 					: build.getWorkspace().getRemote() + File.separator
 							+ relativePathForNMONFiles;
-			LOGGER.info("Copy NMON logs to agent '" + pathOnAgent + "'...");
+			LOGGER.info("Copy NMON logs to Jenkins agent '" + pathOnAgent
+					+ "'...");
+			listener.getLogger().println(
+					"INFO: Copy NMON logs to Jenkins agent '" + pathOnAgent
+							+ "'...");
 			new File(pathOnAgent).mkdirs();
 			client.newSCPFileTransfer().download(
 					getOutputDir(build) + File.separator,
 					pathOnAgent + File.separator);
 			return true;
+		} catch (UserAuthException ex) {
+			throw ex;
 		} catch (IOException ex) {
 			return false;
 		} finally {
