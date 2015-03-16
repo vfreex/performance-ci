@@ -139,7 +139,8 @@ public class NmonMonitor implements ResourceMonitor,
 				client.authPassword(name, password);
 			Session.Command cmd;
 			Session session = client.startSession();
-
+			listener.getLogger().println(
+					"INFO: Checking NMON existence.");
 			cmd = session.exec("ls -lrt /tmp/jenkins-perfci/bin/nmon");
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
@@ -174,6 +175,8 @@ public class NmonMonitor implements ResourceMonitor,
 						return new ByteArrayInputStream(bytes);
 					}
 				}, "/tmp/jenkins-perfci/bin/");
+				listener.getLogger().println(
+						"INFO: NMON has been uploaded to target host.");
 			}
 			listener.getLogger().println("INFO: Starting NMON deamon...");
 			String remoteLogDir = getOutputDir(build);
@@ -188,6 +191,7 @@ public class NmonMonitor implements ResourceMonitor,
 			session.close();
 			if (cmd.getExitStatus() != 0)
 				return false;
+			listener.getLogger().println("INFO: Checking whether NMON is running...");
 			session = client.startSession();
 			cmd = session
 					.exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
