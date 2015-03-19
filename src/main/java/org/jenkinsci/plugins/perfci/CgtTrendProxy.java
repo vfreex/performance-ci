@@ -74,13 +74,13 @@ public class CgtTrendProxy {
 					+ inputFile + "'...");
 
 		Process cgtProcess = cgtProcessBuilder.start();
-		if (redirectedOutput != null) {
-			BufferedReader reader = new BufferedReader(new InputStreamReader(
-					cgtProcess.getErrorStream()));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				System.err.println(line);
-			}
+		PrintStream errStream = redirectedOutput == null ? System.err
+				: redirectedOutput;
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				cgtProcess.getErrorStream()));
+		String line;
+		while ((line = reader.readLine()) != null) {
+			errStream.println(line);
 		}
 		int returnCode = cgtProcess.waitFor();
 		boolean success = returnCode == 0;
