@@ -334,7 +334,7 @@ public class ZabbixMonitor implements ResourceMonitor,
 		arguments.add("GMT");
 		arguments.add("-f");
 		arguments.add(sdf.format(startTime));
-		arguments.add("-f");
+		arguments.add("-t");
 		arguments.add(sdf.format(endTime));
 
 		arguments.add(pathOnAgent);
