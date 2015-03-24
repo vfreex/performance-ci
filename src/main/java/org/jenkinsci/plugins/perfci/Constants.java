@@ -10,6 +10,8 @@ public class Constants {
 			+ File.separator + "cgt-perf";
 	public final static String CGT_TREND_RELATIVE_PATH = CGT_BIN_DEFAULT_RELATIVE_PATH
 			+ File.separator + "cgt-trend";
+	public final static String CGT_ZABBIX_DL = CGT_BIN_DEFAULT_RELATIVE_PATH
+			+ File.separator + "cgt-zabbix-dl";
 	public final static String PERF_CHARTS_RELATIVE_PATH = "perfcharts";
 	public final static String INPUT_DIR_RELATIVE_PATH = PERF_CHARTS_RELATIVE_PATH
 			+ File.separator + "rawdata";

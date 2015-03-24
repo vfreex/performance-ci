@@ -6,27 +6,34 @@
 	<!-- Creates a text field that shows the value of the "name" property. When 
 		submitted, it will be passed to the corresponding constructor parameter. -->
 
-	<f:entry title="Host (*)" field="host" description="Host DNS name or IP address">
+	<f:entry title="Zabbix API Url (*)" field="apiUrl" description="URL of Zabbix API">
 		<f:textbox />
 	</f:entry>
 
-	<f:entry title="User name (*)" field="name" description="User name for SSH logging in">
+	<f:entry title="User name (*)" field="userName"
+		description="User name for Zabbix server logging in">
 		<f:textbox />
 	</f:entry>
 
-	<f:entry title="Password" field="password"
-		description="leave empty to use public key authentication">
+	<f:entry title="Password (*)" field="password"
+		description="Password for Zabbix server logging in">
 		<f:password />
 	</f:entry>
-	
-	<f:entry title="Fingerprint" field="fingerprint" description="Fingerprint for verifying server's identity. Leaving empty may lead to security issues">
+
+	<f:entry title="Host list (*)" field="hosts"
+		description="a semicolon seperated list indicating hosts to be monitored, like 'Zabbix server;dbserver;webserver'">
 		<f:textbox />
 	</f:entry>
 
-	<f:entry title="Sample interval (in seconds) (*)" field="interval">
-		<f:textbox defalut="1" />
+	<f:entry title="Start monitoring before building" field="autoStart"
+		description="">
+		<f:checkbox default="true" />
 	</f:entry>
 
+	<f:entry title="Stop monitoring after building" field="autoStop"
+		description="">
+		<f:checkbox default="false" />
+	</f:entry>
 	<f:entry title="Output path" field="outputPath"
 		description="location for storing .nmon files">
 		<f:textbox default="monitoring/" />

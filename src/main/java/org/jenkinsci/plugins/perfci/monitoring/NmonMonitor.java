@@ -2,7 +2,6 @@ package org.jenkinsci.plugins.perfci.monitoring;
 
 import hudson.Extension;
 import hudson.ExtensionPoint;
-import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.Describable;
@@ -19,11 +18,13 @@ import java.net.URL;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import jenkins.model.Jenkins;
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
+import net.schmizz.sshj.transport.TransportException;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.InMemorySourceFile;
@@ -47,10 +48,66 @@ import org.kohsuke.stapler.StaplerRequest;
  * {@link #perform(AbstractBuild, Launcher, BuildListener)} method will be
  * invoked.
  *
- * @author Kohsuke Kawaguchi
+ * @author Kohsuke Kawaguchi, Rayson Zhu
  */
 public class NmonMonitor implements ResourceMonitor,
 		Describable<ResourceMonitor>, ExtensionPoint {
+	@Extension
+	public static class DescriptorImpl extends ResourceMonitorDescriptor {
+
+		@Override
+		public String getDisplayName() {
+			return "NMON Monitor";
+		}
+
+		public FormValidation doCheckHost(@QueryParameter String host) {
+			if (host == null || host.isEmpty()) {
+				return FormValidation.error("Host name can't be empty");
+			}
+			return FormValidation.ok();
+		}
+
+		public FormValidation doCheckName(@QueryParameter String name) {
+			if (name == null || name.isEmpty()) {
+				return FormValidation.error("User name can't be empty");
+			}
+			return FormValidation.ok();
+		}
+
+		// public FormValidation doCheckPassword(@QueryParameter String
+		// password) {
+		// if (password == null || password.isEmpty()) {
+		// return FormValidation.error("Password can't be empty");
+		// }
+		// return FormValidation.ok();
+		// }
+
+		public FormValidation doCheckFingerprint(
+				@QueryParameter String fingerprint) {
+			if (fingerprint == null || fingerprint.isEmpty()) {
+				return FormValidation.ok();
+			}
+			if (!Pattern.matches("[\\da-fA-F]{1,2}(?:\\:[\\da-fA-F]{1,2}){15}",
+					fingerprint)) {
+				return FormValidation.error("Invalid fingerprint format");
+			}
+			return FormValidation.ok();
+		}
+
+		public FormValidation doCheckInterval(@QueryParameter String interval) {
+			if (interval == null || interval.isEmpty()) {
+				return FormValidation.error("Interval can't be empty");
+			}
+			if (!Pattern.matches("\\d{1,10}", interval)) {
+				return FormValidation.error("Invalid interval format");
+			}
+			if (Integer.parseInt(interval) <= 0) {
+				return FormValidation.error("Invalid interval range");
+			}
+			return FormValidation.ok();
+		}
+	}
+
 	private static final Logger LOGGER = Logger.getLogger(NmonMonitor.class
 			.getName());
 
@@ -59,6 +116,7 @@ public class NmonMonitor implements ResourceMonitor,
 	private final String password;
 	private final String interval;
 	private final String outputPath;
+	private final String fingerprint;
 	// private Object monfile;
 	private final static int TIMEOUT = 30000;
 	private final static int MAX_TRIES = 5;
@@ -67,12 +125,13 @@ public class NmonMonitor implements ResourceMonitor,
 	// "DataBoundConstructor"
 	@DataBoundConstructor
 	public NmonMonitor(String host, String name, String password,
-			String interval, String outputPath) {
+			String interval, String outputPath, String fingerprint) {
 		this.host = host;
 		this.name = name;
 		this.password = password;
 		this.interval = interval;
 		this.outputPath = outputPath;
+		this.fingerprint = fingerprint;
 	}
 
 	/**
@@ -98,11 +157,11 @@ public class NmonMonitor implements ResourceMonitor,
 	public boolean start(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws Exception {
 		try {
-			for (int i = 0; i < MAX_TRIES;) {
-				LOGGER.info("Starting NMON monitor... (try " + ++i + " of "
+			for (int i = 1; i <= MAX_TRIES; ++i) {
+				LOGGER.info("Starting NMON monitor... (try " + i + " of "
 						+ MAX_TRIES + ")");
 				listener.getLogger().println(
-						"INFO: Starting NMON monitor... (try " + ++i + " of "
+						"INFO: Starting NMON monitor... (try " + i + " of "
 								+ MAX_TRIES + ")");
 				if (tryStart(build, listener)) {
 					LOGGER.info("INFO: NMON monitor started.");
@@ -113,9 +172,10 @@ public class NmonMonitor implements ResourceMonitor,
 				listener.getLogger().println(
 						"WARNING: Fail to start NMON monitor.");
 			}
-		} catch (UserAuthException ex) {
-			LOGGER.warning("Authentication error.");
-			listener.getLogger().println("ERROR: Authentication error.");
+		} catch (Exception ex) {
+			LOGGER.warning("Fail to start NMON monitor: " + ex.toString());
+			listener.getLogger().println(
+					"ERROR: Fail to start NMON monitor: " + ex.toString());
 		}
 		LOGGER.warning("Cannot start NMON monitor. Give up.");
 		listener.getLogger().println(
@@ -127,7 +187,10 @@ public class NmonMonitor implements ResourceMonitor,
 			throws IOException {
 		String projectDir = getProjectDir(build);
 		SSHClient client = new SSHClient();
-		client.addHostKeyVerifier(new PromiscuousVerifier());
+		if (fingerprint != null && !fingerprint.isEmpty())
+			client.addHostKeyVerifier(fingerprint);
+		else
+			client.addHostKeyVerifier(new PromiscuousVerifier());
 		try {
 			listener.getLogger().println(
 					"INFO: Connecting to host \"" + host + "\"...");
@@ -139,8 +202,7 @@ public class NmonMonitor implements ResourceMonitor,
 				client.authPassword(name, password);
 			Session.Command cmd;
 			Session session = client.startSession();
-			listener.getLogger().println(
-					"INFO: Checking NMON existence.");
+			listener.getLogger().println("INFO: Checking NMON existence.");
 			cmd = session.exec("ls -lrt /tmp/jenkins-perfci/bin/nmon");
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
@@ -191,7 +253,8 @@ public class NmonMonitor implements ResourceMonitor,
 			session.close();
 			if (cmd.getExitStatus() != 0)
 				return false;
-			listener.getLogger().println("INFO: Checking whether NMON is running...");
+			listener.getLogger().println(
+					"INFO: Checking whether NMON is running...");
 			session = client.startSession();
 			cmd = session
 					.exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
@@ -206,6 +269,8 @@ public class NmonMonitor implements ResourceMonitor,
 			}
 			return true;
 		} catch (UserAuthException ex) {
+			throw ex;
+		} catch (TransportException ex) {
 			throw ex;
 		} catch (IOException ex) {
 			return false;
@@ -227,8 +292,8 @@ public class NmonMonitor implements ResourceMonitor,
 	public boolean stop(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws IOException {
 		try {
-			for (int i = 0; i < MAX_TRIES;) {
-				LOGGER.info("Stopping NMON monitors... (try " + ++i + " of "
+			for (int i = 1; i <= MAX_TRIES; ++i) {
+				LOGGER.info("Stopping NMON monitors... (try " + i + " of "
 						+ MAX_TRIES + ")");
 				if (tryStop(build, listener)) {
 					LOGGER.info("NMON monitors stopped.");
@@ -244,12 +309,15 @@ public class NmonMonitor implements ResourceMonitor,
 		return false;
 	}
 
-	public boolean tryStop(AbstractBuild<?, ?> build, BuildListener listener)
+	private boolean tryStop(AbstractBuild<?, ?> build, BuildListener listener)
 			throws IOException {
 		String projectDir = getProjectDir(build);
 		SSHClient client = new SSHClient();
-		try {
+		if (fingerprint != null && !fingerprint.isEmpty())
+			client.addHostKeyVerifier(fingerprint);
+		else
 			client.addHostKeyVerifier(new PromiscuousVerifier());
+		try {
 			listener.getLogger().println(
 					"INFO: Connecting to host \"" + host + "\"...");
 			client.connect(host);
@@ -354,37 +422,6 @@ public class NmonMonitor implements ResourceMonitor,
 		}
 	}
 
-	@Extension
-	public static class DescriptorImpl extends ResourceMonitorDescriptor {
-
-		@Override
-		public String getDisplayName() {
-			return "Nmon Monitor";
-		}
-
-		public FormValidation doCheckDelimiter(@QueryParameter String delimiter) {
-			if (delimiter == null || delimiter.isEmpty()) {
-				return FormValidation.error("Delimier can't be empty");
-			}
-			return FormValidation.ok();
-		}
-
-		public FormValidation doCheckPattern(@QueryParameter String pattern) {
-			if (pattern == null || pattern.isEmpty()) {
-				FormValidation.error("Pattern can't be empty");
-			}
-
-			return null;
-		}
-
-		private void validatePresent(Set<String> missing, String pattern,
-				String string) {
-			if (!pattern.contains(string)) {
-				missing.add(string);
-			}
-		}
-	}
-
 	@Override
 	public void collect(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) {
@@ -405,5 +442,9 @@ public class NmonMonitor implements ResourceMonitor,
 
 	public String getOutputPath() {
 		return outputPath;
+	}
+
+	public String getFingerprint() {
+		return fingerprint;
 	}
 }

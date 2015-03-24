@@ -1,33 +1,26 @@
 package org.jenkinsci.plugins.perfci.monitoring;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import hudson.Launcher;
 import hudson.Extension;
-import hudson.util.FormValidation;
-import hudson.model.AbstractBuild;
+import hudson.Launcher;
 import hudson.model.BuildListener;
+import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.ParametersAction;
-import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.Builder;
+import hudson.util.FormValidation;
 
-import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.logging.Logger;
+
+import javax.servlet.ServletException;
 
 import net.sf.json.JSONObject;
 
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
-
-import javax.servlet.ServletException;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.kohsuke.stapler.StaplerRequest;
 
 public class StopMonitorsBuilder extends Builder {
 
@@ -43,7 +36,7 @@ public class StopMonitorsBuilder extends Builder {
 	 * We'll use this from the <tt>config.jelly</tt>.
 	 */
 	@Override
-	public boolean perform(AbstractBuild build, Launcher launcher,
+	public boolean perform(AbstractBuild<?,?> build, Launcher launcher,
 			BuildListener listener) {
 		// This is where you 'build' the project.
 		// Since this is a dummy, we just say 'hello world' and call that a
@@ -58,9 +51,21 @@ public class StopMonitorsBuilder extends Builder {
 		// }
 
 		ParametersAction paraAction = build.getAction(ParametersAction.class);
+		if (paraAction == null) {
+			listener.getLogger().println("ERROR: No monitors to stop.");
+			return false;
+		}
 		ResourceMonitor.ResourceMonitorParameterValue para = (ResourceMonitor.ResourceMonitorParameterValue) paraAction
 				.getParameter("monitors");
+		if (para == null) {
+			listener.getLogger().println("ERROR: No monitors to stop.");
+			return false;
+		}
 		List<ResourceMonitor> monitors = para.getMonitors();
+		if (monitors == null || monitors.isEmpty()) {
+			listener.getLogger().println("ERROR: No monitors to stop.");
+			return false;
+		}
 		int stoppedMonitors = 0;
 		for (ResourceMonitor monitor : monitors) {
 			try {

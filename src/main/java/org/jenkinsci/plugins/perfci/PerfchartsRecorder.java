@@ -104,8 +104,7 @@ public class PerfchartsRecorder extends Recorder {
 	@DataBoundConstructor
 	public PerfchartsRecorder(String inputPattern, String timeZone,
 			String fromTime, String toTime, String excludedTransactionPattern) {
-		this.inputPattern = inputPattern != null && !inputPattern.isEmpty() ? inputPattern
-				: "**/*.jtl;**/*.nmon;**/*.load;**/*.conf";
+		this.inputPattern = inputPattern;
 		this.timeZone = timeZone;
 		this.fromTime = fromTime;
 		this.toTime = toTime;
