@@ -224,7 +224,7 @@ ChartGeneration.compositeReport = {};
 	function drawJmeterSummaryChart($chart, chart) {
 		$chart.append($("<h3 class='chart_title'/>").text(chart.title)).append(
 				$("<h4 class='chart_subtitle'/>").text(chart.subtitle));
-		var $table = $("<table class='chart_table JmeterSummaryChart' />")
+		var $table = $("<table class='chart_table JmeterSummaryChart sortable' />")
 				.appendTo($chart);
 		var $tableHeaderRow = $("<tr/>").appendTo(
 				$("<thead/>").appendTo($table));
@@ -415,7 +415,7 @@ ChartGeneration.compositeReport = {};
 			if (item) {
 				var x = item.series.xaxis.options.mode === "time" ? new Date(
 						item.datapoint[0]).toUTCString() : item.datapoint[0];
-				var y = item.datapoint[1].toFixed(2);
+				var y = item.datapoint[1].toFixed(3);
 				if (item.series._unit && item.series._unit.value)
 					y += " " + item.series._unit.value;
 				$("#tooltip").html(

@@ -25,6 +25,7 @@
 				src="/plugin/perfci/lib/flot/jquery.flot.crosshair.min.js"></script>
 			<script type="text/javascript" src="/plugin/perfci/js/perfcharts.js">
 			</script>
+			<script type="text/javascript" src="/plugin/perfci/lib/sortable.js"></script>
 			<script type="text/javascript" src="${it.dataJSPath}">
 			</script>
 			<style type="text/css">

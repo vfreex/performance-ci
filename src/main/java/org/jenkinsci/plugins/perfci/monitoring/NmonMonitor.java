@@ -326,7 +326,7 @@ public class NmonMonitor implements ResourceMonitor,
 				client.authPublickey(name);
 			else
 				client.authPassword(name, password);
-			listener.getLogger().println("INFO: Trying killing NMON deamon...");
+			listener.getLogger().println("INFO: Try killing NMON deamon...");
 			Session.Command cmd;
 			Session session = client.startSession();
 			cmd = session

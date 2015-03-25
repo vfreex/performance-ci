@@ -5,16 +5,15 @@
 		<l:main-panel>
 			<style type="text/css">
 				#report_container, #report_container * {
-					box-sizing:content-box;
+				box-sizing:content-box;
 				}
 			</style>
 			<script type="text/javascript" src="/plugin/perfci/lib/jquery-1.11.1.min.js"></script>
 			<script type="text/javascript">
-				jQuery.noConflict(); 
+				jQuery.noConflict();
 			</script>
 			<script type="text/javascript" src="/plugin/perfci/lib/flot/jquery.flot.min.js"></script>
-			<script type="text/javascript"
-				src="/plugin/perfci/lib/flot/jquery.flot.time.min.js"></script>
+			<script type="text/javascript" src="/plugin/perfci/lib/flot/jquery.flot.time.min.js"></script>
 			<script type="text/javascript"
 				src="/plugin/perfci/lib/flot/jquery.flot.categories.min.js"></script>
 			<script type="text/javascript"
@@ -23,6 +22,7 @@
 				src="/plugin/perfci/lib/flot/jquery.flot.axislabels.js"></script>
 			<script type="text/javascript"
 				src="/plugin/perfci/lib/flot/jquery.flot.crosshair.min.js"></script>
+			<script type="text/javascript" src="/plugin/perfci/lib/sortable.js"></script>
 			<script type="text/javascript" src="/plugin/perfci/js/perfcharts.js">
 			</script>
 			<script type="text/javascript" src="getDataJs">
@@ -144,51 +144,51 @@
 			</style>
 			<style type="text/css">
 				.tag_error_msg_error {
-					color: red;
+				color: red;
 				}
 				.tag_error_msg_fine {
-					color: green;
+				color: green;
 				}
 			</style>
 			<script type="text/javascript">
-		(function($){
-			$(function(){
+				(function($){
+				$(function(){
 				var $tag_error_msg = $("#tag_error_msg");
 				$("#txt_tag").change(function(){
-					$tag_error_msg.removeClass("tag_error_msg_error");
-					$tag_error_msg.removeClass("tag_error_msg_fine");
-					$tag_error_msg.text("Please wait...");
-					$.post("updateTags", { tags: this.value}, function(data, status, jqXHR) {
-						if (status !== "success"){
-							$tag_error_msg.addClass("tag_error_msg_error");
-							$tag_error_msg.text("Failed");
-							return;
-						}
-						if (data.error !== 0) {
-							$tag_error_msg.addClass("tag_error_msg_error");
-							$tag_error_msg.text(data.errorMessage);
-							return;
-						}
-						$tag_error_msg.addClass("tag_error_msg_fine");
-						$tag_error_msg.text(data.errorMessage);
-					}).fail(function() {
-    					$tag_error_msg.addClass("tag_error_msg_error");
-							$tag_error_msg.text("Failed.");
-  					});
+				$tag_error_msg.removeClass("tag_error_msg_error");
+				$tag_error_msg.removeClass("tag_error_msg_fine");
+				$tag_error_msg.text("Please wait...");
+				$.post("updateTags", { tags: this.value}, function(data, status, jqXHR) {
+				if (status !== "success"){
+				$tag_error_msg.addClass("tag_error_msg_error");
+				$tag_error_msg.text("Failed");
+				return;
+				}
+				if (data.error !== 0) {
+				$tag_error_msg.addClass("tag_error_msg_error");
+				$tag_error_msg.text(data.errorMessage);
+				return;
+				}
+				$tag_error_msg.addClass("tag_error_msg_fine");
+				$tag_error_msg.text(data.errorMessage);
+				}).fail(function() {
+				$tag_error_msg.addClass("tag_error_msg_error");
+				$tag_error_msg.text("Failed.");
 				});
-			});
-		})(jQuery);
+				});
+				});
+				})(jQuery);
 			</script>
 			<div id="report_container" style="width: auto; height:auto;">
-			<div>
-				<a href="monoReport" target="_blank">open in a separated page</a>
-				<fieldset>
-					<label for="txt_tag">Tags</label>
-					<input id="txt_tag" type="text" name="tags" value="${it.tags}"
-						placeholder="ex. normal,success" title="a comma seperated list" />
-					<span id="tag_error_msg" class="error_msg"></span>
-				</fieldset>
-			</div>
+				<div>
+					<a href="monoReport" target="_blank">open in a separated page</a>
+					<fieldset>
+						<label for="txt_tag">Tags</label>
+						<input id="txt_tag" type="text" name="tags" value="${it.tags}"
+							placeholder="ex. normal,success" title="a comma seperated list" />
+						<span id="tag_error_msg" class="error_msg"></span>
+					</fieldset>
+				</div>
 				<header>
 					<h1>Loading...</h1>
 					<nav>
@@ -206,7 +206,10 @@
 					<hr />
 				</section>
 				<footer>
-					<p>Powered by <a href="#">Perfcharts</a></p>
+					<p>
+						Powered by
+						<a href="#">Perfcharts</a>
+					</p>
 				</footer>
 			</div>
 		</l:main-panel>
