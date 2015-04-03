@@ -27,7 +27,13 @@ public class IOHelpers {
 	}
 
 	public static String concatPathParts(String... parts) {
-		return String.join(File.separator, parts);
+		if (parts.length == 0)
+			return "";
+		StringBuilder sb = new StringBuilder(parts[0]);
+		for (int i = 1; i < parts.length; i++) {
+			sb.append(File.separator).append(parts[i]);
+		}
+		return sb.toString();
 	}
 	
 	public static String readToEnd(String fileName) throws FileNotFoundException, IOException {

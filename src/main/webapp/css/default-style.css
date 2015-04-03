@@ -1,0 +1,134 @@
+html {
+	font-size: 100%;
+}
+
+body {
+	font-size: 1em;
+}
+
+header, #content, footer {
+	width: 1100px;
+	margin: 0 auto;
+}
+
+#report_nav {
+	margin: 0 auto;
+	padding: 0;
+}
+
+#report_nav li {
+	margin: 5px;
+	display: inline-block;
+}
+
+.charts {
+	
+}
+
+.chart {
+	border: 2px solid #333;
+	margin: 20px auto;
+	padding: 10px;
+	width: 1076px;
+	page-break-inside: avoid;
+	overflow: auto;
+}
+
+.report_title, .chart_title, .chart_subtitle {
+	text-align: center;
+}
+
+.chart_title {
+	margin: 5px;
+	padding: 0;
+}
+
+.chart_subtitle {
+	margin: 5px;
+	padding: 0;
+}
+
+.placeholder {
+	width: 900px;
+	height: 480px;
+	margin: 0 auto;
+}
+
+.legend {
+	width: 900px;
+	margin: 0 auto;
+}
+
+/* .category_tick { */
+/* 	transform: rotate(-90deg); */
+/* 	float: left; */
+/* 	text-align : right; */
+/* 	transform-origin: 0 0 */
+/* } */
+.x_label {
+	margin: 5px 60px;
+	text-align: center;
+}
+
+.y_label {
+	margin: 5px 60px;
+}
+
+.series_label_shown {
+	color: #000;
+}
+
+.series_label_hidden {
+	color: #888;
+	text-decoration: line-through;
+}
+
+.chart_table {
+	border: 2px solid;
+	border-collapse: collapse;
+	margin: 0 auto;
+/* 	table-layout: fixed; */
+}
+
+.chart_table thead {
+	background-color: #ddd;
+}
+
+.chart_table th {
+	border: 1px solid #000;
+	font-size: 0.8em;
+}
+
+.chart_table td {
+	border: 1px solid #000;
+	font-size: 0.75em;
+}
+
+.chart_table tr:nth-child(2n) {
+	background-color: #eee;
+}
+
+.JmeterSummaryChart {
+	table-layout: fixed;
+}
+
+.JmeterSummaryChart>tbody>tr>td {
+	text-align: right;
+}
+
+.JmeterSummaryChart>tbody>tr>td:FIRST-CHILD {
+	word-wrap: break-word;
+	text-align: left;
+	max-width: 200px;
+}
+
+.JmeterSummaryChart_error {
+	color: red;
+}
+
+.perfcharts_warning {
+	color: red;
+}
+.perfcharts_fine {
+	color: green;
+}

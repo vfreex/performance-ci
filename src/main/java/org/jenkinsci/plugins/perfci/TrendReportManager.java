@@ -74,8 +74,8 @@ public class TrendReportManager {
 					continue;
 				}
 				LOGGER.info("matched build#" + build.number + " tags: "
-						+ String.join(",", buildTags) + ", target tags: "
-						+ String.join(",", targetTags));
+						+ Utilities.joinArray(",", buildTags) + ", target tags: "
+						+ Utilities.joinArray(",", targetTags));
 				String perfDataPath = getPerfDataPathForBuild(build);
 				if (!new File(perfDataPath).exists()) {
 					LOGGER.info("Skip build#" + build.number + " for trend report generation: Its perf&res report is not found.");
