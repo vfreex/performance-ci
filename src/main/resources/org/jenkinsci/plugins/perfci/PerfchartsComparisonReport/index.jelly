@@ -1,7 +1,7 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
 	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 	<l:layout>
-		<st:include it="${it.build}" page="sidepanel.jelly" />
+		<st:include it="${it.sourceBuild}" page="sidepanel.jelly" />
 		<l:main-panel>
 			<script type="text/javascript"
 				src="${resURL}/plugin/perfci/lib/jquery-1.11.1.min.js"></script>
@@ -29,7 +29,7 @@
 				href="${resURL}/plugin/perfci/css/tablesorter/theme.default.css" />
 			<link rel="stylesheet" type="text/css"
 				href="${resURL}/plugin/perfci/css/default-style.css" />
-			<script type="text/javascript" src="getDataJs"></script>
+			<script type="text/javascript" src="${it.dataJSPath}"></script>
 			<style type="text/css">
 				#report_container, #report_container * {
 				box-sizing:content-box;
@@ -42,20 +42,19 @@
 				}
 			</style>
 			<script type="text/javascript"
-				src="${resURL}/plugin/perfci/js/PerfchartsBuildAction.js"></script>
+				src="${resURL}/plugin/perfci/js/PerfchartsComparisonReport.js"></script>
 			<div id="report_container">
 				<div>
-					<a href="monoReport" target="_blank">open in a separated page</a>
+					[<a href="monoReport" target="_blank">open in a separated page</a>]
+					[<a href="../../" target="_blank">this build</a>]
+					[<a href="../../../../${it.destBuild.number}/detailedReport" target="_blank">compared build</a>]
 					<fieldset>
 						<label for="sel_build">Compare with</label>
 						<select id="sel_build">
 							<option>-- choose a build --</option>
 						</select>
-						<label for="txt_tag">Tags</label>
-						<input id="txt_tag" type="text" name="tags" value="${it.tags}"
-							placeholder="ex. normal,success" title="a comma seperated list" />
+						<input id="btn_refresh" type="button" value="Refresh" />
 						<span id="tag_error_msg" class="error_msg"></span>
-
 					</fieldset>
 				</div>
 				<header>

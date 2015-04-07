@@ -6,6 +6,7 @@ import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.Describable;
 import hudson.model.AbstractBuild;
+import hudson.remoting.Callable;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 
@@ -14,13 +15,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.net.URL;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import jenkins.model.Jenkins;
+import jenkins.security.Roles;
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
@@ -29,6 +31,7 @@ import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.InMemorySourceFile;
 
+import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -156,36 +159,13 @@ public class NmonMonitor implements ResourceMonitor,
 	@Override
 	public boolean start(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws Exception {
-		try {
-			for (int i = 1; i <= MAX_TRIES; ++i) {
-				LOGGER.info("Starting NMON monitor... (try " + i + " of "
-						+ MAX_TRIES + ")");
-				listener.getLogger().println(
-						"INFO: Starting NMON monitor... (try " + i + " of "
-								+ MAX_TRIES + ")");
-				if (tryStart(build, listener)) {
-					LOGGER.info("INFO: NMON monitor started.");
-					listener.getLogger().println("INFO: NMON monitor started.");
-					return true;
-				}
-				LOGGER.warning("Fail to start NMON monitor.");
-				listener.getLogger().println(
-						"WARNING: Fail to start NMON monitor.");
-			}
-		} catch (Exception ex) {
-			LOGGER.warning("Fail to start NMON monitor: " + ex.toString());
-			listener.getLogger().println(
-					"ERROR: Fail to start NMON monitor: " + ex.toString());
-		}
-		LOGGER.warning("Cannot start NMON monitor. Give up.");
-		listener.getLogger().println(
-				"WARNING: Cannot start NMON monitor. Give up.");
-		return false;
+		return start(build.getProject().getName(), build.getId(), build
+				.getWorkspace().getRemote(), listener);
 	}
 
-	private boolean tryStart(AbstractBuild<?, ?> build, BuildListener listener)
-			throws IOException {
-		String projectDir = getProjectDir(build);
+	private boolean tryStart(String projectName, String buildID,
+			String workspace, BuildListener listener) throws IOException {
+		String projectDir = getProjectDir(projectName);
 		SSHClient client = new SSHClient();
 		if (fingerprint != null && !fingerprint.isEmpty())
 			client.addHostKeyVerifier(fingerprint);
@@ -241,7 +221,7 @@ public class NmonMonitor implements ResourceMonitor,
 						"INFO: NMON has been uploaded to target host.");
 			}
 			listener.getLogger().println("INFO: Starting NMON deamon...");
-			String remoteLogDir = getOutputDir(build);
+			String remoteLogDir = getOutputDir(projectName, buildID);
 			session = client.startSession();
 			cmd = session
 					.exec("mkdir -p '"
@@ -279,39 +259,24 @@ public class NmonMonitor implements ResourceMonitor,
 		}
 	}
 
-	private String getOutputDir(AbstractBuild<?, ?> build) {
-		return "/tmp/jenkins-perfci/jobs/" + build.getProject().getName() + "/"
-				+ build.getId() + "/monitoring";
+	private static String getOutputDir(String projectName, String buildID) {
+		return getProjectDir(projectName) + "/" + buildID + "/monitoring";
 	}
 
-	private String getProjectDir(AbstractBuild<?, ?> build) {
-		return "/tmp/jenkins-perfci/jobs/" + build.getProject().getName();
+	private static String getProjectDir(String projectName) {
+		return "/tmp/jenkins-perfci/jobs/" + projectName;
 	}
 
 	@Override
 	public boolean stop(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) throws IOException {
-		try {
-			for (int i = 1; i <= MAX_TRIES; ++i) {
-				LOGGER.info("Stopping NMON monitors... (try " + i + " of "
-						+ MAX_TRIES + ")");
-				if (tryStop(build, listener)) {
-					LOGGER.info("NMON monitors stopped.");
-					return true;
-				}
-				LOGGER.warning("Fail to stop NMON monitors.");
-			}
-		} catch (UserAuthException ex) {
-			LOGGER.warning("Authentication error.");
-			listener.getLogger().println("ERROR: Authentication error.");
-		}
-		LOGGER.warning("Cannot stop NMON monitors. Give up.");
-		return false;
+			BuildListener listener) throws Exception {
+		return stop(build.getProject().getName(), build.getId(), build
+				.getWorkspace().getRemote(), listener);
 	}
 
-	private boolean tryStop(AbstractBuild<?, ?> build, BuildListener listener)
-			throws IOException {
-		String projectDir = getProjectDir(build);
+	private boolean tryStop(String projectName, String buildID,
+			String workspace, BuildListener listener) throws IOException {
+		String projectDir = getProjectDir(projectName);
 		SSHClient client = new SSHClient();
 		if (fingerprint != null && !fingerprint.isEmpty())
 			client.addHostKeyVerifier(fingerprint);
@@ -401,17 +366,24 @@ public class NmonMonitor implements ResourceMonitor,
 					|| outputPath.isEmpty() ? "monitoring" : outputPath;
 			String pathOnAgent = relativePathForNMONFiles.startsWith("/")
 					|| relativePathForNMONFiles.startsWith("file:") ? relativePathForNMONFiles
-					: build.getWorkspace().getRemote() + File.separator
-							+ relativePathForNMONFiles;
+					: workspace + File.separator + relativePathForNMONFiles;
 			LOGGER.info("Copy NMON logs to Jenkins agent '" + pathOnAgent
 					+ "'...");
 			listener.getLogger().println(
 					"INFO: Copy NMON logs to Jenkins agent '" + pathOnAgent
 							+ "'...");
 			new File(pathOnAgent).mkdirs();
-			client.newSCPFileTransfer().download(
-					getOutputDir(build) + File.separator,
-					pathOnAgent + File.separator);
+			String from = getOutputDir(projectName, buildID);
+			String to = pathOnAgent;
+			LOGGER.info("'monitored:" + from + "' ==> 'agent:" + to + "'...");
+			listener.getLogger().println(
+					"INFO: 'monitored:" + from + "' ==> 'agent:" + to + "'...");
+
+			client.newSCPFileTransfer().download(from, to);
+			LOGGER.info("'monitored:" + from + "' ==> 'agent:" + to + "' done");
+			listener.getLogger().println(
+					"INFO: 'monitored:" + from + "' ==> 'agent:" + to
+							+ "' done");
 			return true;
 		} catch (UserAuthException ex) {
 			throw ex;
@@ -420,18 +392,6 @@ public class NmonMonitor implements ResourceMonitor,
 		} finally {
 			client.close();
 		}
-	}
-
-	@Override
-	public void collect(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) {
-
-	}
-
-	@Override
-	public boolean isRuning(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) {
-		return false;
 	}
 
 	@Override
@@ -447,4 +407,63 @@ public class NmonMonitor implements ResourceMonitor,
 	public String getFingerprint() {
 		return fingerprint;
 	}
+
+	@Override
+	public boolean start(String projectName, String buildID, String workspace,
+			BuildListener listener) throws Exception {
+		try {
+			for (int i = 1; i <= MAX_TRIES; ++i) {
+				LOGGER.info("Starting NMON monitor... (try " + i + " of "
+						+ MAX_TRIES + ")");
+				listener.getLogger().println(
+						"INFO: Starting NMON monitor... (try " + i + " of "
+								+ MAX_TRIES + ")");
+				if (tryStart(projectName, buildID, workspace, listener)) {
+					LOGGER.info("INFO: NMON monitor started.");
+					listener.getLogger().println("INFO: NMON monitor started.");
+					return true;
+				}
+				LOGGER.warning("Fail to start NMON monitor.");
+				listener.getLogger().println(
+						"WARNING: Fail to start NMON monitor.");
+			}
+		} catch (Exception ex) {
+			LOGGER.warning("Fail to start NMON monitor: " + ex.toString());
+			listener.getLogger().println(
+					"ERROR: Fail to start NMON monitor: " + ex.toString());
+		}
+		LOGGER.warning("Cannot start NMON monitor. Give up.");
+		listener.getLogger().println(
+				"WARNING: Cannot start NMON monitor. Give up.");
+		return false;
+	}
+
+	@Override
+	public boolean stop(String projectName, String buildID, String workspace,
+			BuildListener listener) throws Exception {
+		try {
+			for (int i = 1; i <= MAX_TRIES; ++i) {
+				LOGGER.info("Stopping NMON monitors... (try " + i + " of "
+						+ MAX_TRIES + ")");
+				if (tryStop(projectName, buildID, workspace, listener)) {
+					LOGGER.info("NMON monitors stopped.");
+					return true;
+				}
+				LOGGER.warning("Fail to stop NMON monitors.");
+			}
+		} catch (UserAuthException ex) {
+			LOGGER.warning("Authentication error.");
+			listener.getLogger().println("ERROR: Authentication error.");
+		}
+		LOGGER.warning("Cannot stop NMON monitors. Give up.");
+		return false;
+	}
+
+	@Override
+	public void checkRoles(RoleChecker checker, Callable<?, ? extends SecurityException> callable)
+			throws SecurityException {
+		checker.check(callable, Roles.SLAVE, Roles.MASTER);
+	}
+
+
 }

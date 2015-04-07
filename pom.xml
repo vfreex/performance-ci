@@ -13,7 +13,7 @@
 	</parent>
 	<groupId>org.jenkins-ci.plugins.perfci</groupId>
 	<artifactId>perfci</artifactId>
-	<version>0.1.0</version>
+	<version>0.2.0</version>
 	<packaging>hpi</packaging>
 
 	<name>Performance &amp; Resource Monitoring Plugin</name>
@@ -79,5 +79,5 @@
 			<version>20131018</version>
 		</dependency>
 	</dependencies>
-	<description>This plugin should work with perfcharts v0.4.0.</description>
+	<description>This plugin should work with perfcharts v0.5.1.</description>
 </project>

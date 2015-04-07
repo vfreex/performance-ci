@@ -7,6 +7,7 @@ import hudson.model.BuildListener;
 import hudson.model.Describable;
 import hudson.model.AbstractBuild;
 import hudson.model.Descriptor;
+import hudson.remoting.Callable;
 import hudson.util.FormValidation;
 
 import java.io.BufferedReader;
@@ -29,9 +30,11 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import jenkins.model.Jenkins;
+import jenkins.security.Roles;
 
 import org.jenkinsci.plugins.perfci.Constants;
 import org.jenkinsci.plugins.perfci.PerfchartsRecorder;
+import org.jenkinsci.remoting.RoleChecker;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -150,7 +153,7 @@ public class ZabbixMonitor implements ResourceMonitor,
 	}
 
 	@Override
-	public boolean start(AbstractBuild<?, ?> build, Launcher launcher,
+	public boolean start(String projectName, String buildID, String workspace,
 			BuildListener listener) throws Exception {
 		String apiVersion = getAPIVersion();
 		listener.getLogger().println("INFO: Zabbix API version: " + apiVersion);
@@ -171,7 +174,8 @@ public class ZabbixMonitor implements ResourceMonitor,
 					listener.getLogger().println(
 							"INFO: Starting Zabbix monitor... (try " + i
 									+ " of " + MAX_TRIES + ")");
-					if (tryStart(build, listener, auth)) {
+					if (tryStart(projectName, buildID, workspace, listener,
+							auth)) {
 						logout(auth);
 						LOGGER.info("INFO: Zabbix monitor started.");
 						listener.getLogger().println(
@@ -198,8 +202,75 @@ public class ZabbixMonitor implements ResourceMonitor,
 		return true;
 	}
 
-	public boolean tryStart(AbstractBuild<?, ?> build, BuildListener listener,
-			String auth) throws Exception {
+	@Override
+	public boolean stop(String projectName, String buildID, String workspace,
+			BuildListener listener) throws Exception {
+		String apiVersion = getAPIVersion();
+		listener.getLogger().println("INFO: Zabbix API version: " + apiVersion);
+		String auth = null;
+		listener.getLogger().println("INFO: Logging in...");
+		try {
+			auth = authenticate();
+		} catch (Exception ex) {
+			listener.getLogger().println(
+					"ERROR: Authentication Failed." + ex.toString());
+			return false;
+		}
+		if (autoStop) {
+			try {
+				for (int i = 1; i <= MAX_TRIES; i++) {
+					LOGGER.info("Stopping Zabbix monitor... (try " + i + " of "
+							+ MAX_TRIES + ")");
+					listener.getLogger().println(
+							"INFO: Stopping Zabbix monitor... (try " + i
+									+ " of " + MAX_TRIES + ")");
+					if (tryStop(projectName, buildID, workspace, listener, auth)) {
+						logout(auth);
+						endTime = new Date();
+						LOGGER.info("INFO: Zabbix monitor stopped.");
+						listener.getLogger().println(
+								"INFO: Zabbix monitor stopped.");
+						if (!downloadData(projectName, buildID, workspace,
+								listener)) {
+							listener.getLogger()
+									.println(
+											"ERROR: Fail to download data from Zabbix server.");
+							return false;
+						}
+						return true;
+					}
+				}
+			} catch (Exception ex) {
+				LOGGER.warning("Fail to stop Zabbix monitor: " + ex.toString());
+				listener.getLogger().println(
+						"ERROR: Fail to stop Zabbix monitor: " + ex.toString());
+			}
+			LOGGER.warning("Cannot stop Zabbix monitor. Give up.");
+			listener.getLogger().println(
+					"WARNING: Cannot stop Zabbix monitor. Give up.");
+			logout(auth);
+			return false;
+		}
+		logout(auth);
+		endTime = new Date();
+		if (!downloadData(projectName, buildID, workspace, listener)) {
+			listener.getLogger().println(
+					"ERROR: Fail to download data from Zabbix server.");
+			return false;
+		}
+		return true;
+	}
+
+	@Override
+	public boolean start(AbstractBuild<?, ?> build, Launcher launcher,
+			BuildListener listener) throws Exception {
+		return start(build.getProject().getName(), build.getId(), build
+				.getWorkspace().getRemote(), listener);
+	}
+
+	private boolean tryStart(String projectName, String buildID,
+			String workspace, BuildListener listener, String auth)
+			throws Exception {
 		listener.getLogger().println(
 				"INFO: Geting host IDs for \"" + hosts + "\"...");
 		Collection<Integer> hostIDs = getHostIDs(auth);
@@ -220,8 +291,9 @@ public class ZabbixMonitor implements ResourceMonitor,
 		}
 	}
 
-	public boolean tryStop(AbstractBuild<?, ?> build, BuildListener listener,
-			String auth) throws Exception {
+	public boolean tryStop(String projectName, String buildID,
+			String workspace, BuildListener listener, String auth)
+			throws Exception {
 		listener.getLogger().println(
 				"INFO: Geting host IDs for \"" + hosts + "\"...");
 		Collection<Integer> hostIDs = getHostIDs(auth);
@@ -244,63 +316,13 @@ public class ZabbixMonitor implements ResourceMonitor,
 	@Override
 	public boolean stop(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws Exception {
-		String apiVersion = getAPIVersion();
-		listener.getLogger().println("INFO: Zabbix API version: " + apiVersion);
-		String auth = null;
-		listener.getLogger().println("INFO: Logging in...");
-		try {
-			auth = authenticate();
-		} catch (Exception ex) {
-			listener.getLogger().println(
-					"ERROR: Authentication Failed." + ex.toString());
-			return false;
-		}
-		if (autoStop) {
-			try {
-				for (int i = 1; i <= MAX_TRIES; i++) {
-					LOGGER.info("Stopping Zabbix monitor... (try " + i + " of "
-							+ MAX_TRIES + ")");
-					listener.getLogger().println(
-							"INFO: Stopping Zabbix monitor... (try " + i
-									+ " of " + MAX_TRIES + ")");
-					if (tryStop(build, listener, auth)) {
-						logout(auth);
-						endTime = new Date();
-						LOGGER.info("INFO: Zabbix monitor stopped.");
-						listener.getLogger().println(
-								"INFO: Zabbix monitor stopped.");
-						if (!downloadData(build, listener)) {
-							listener.getLogger()
-									.println(
-											"ERROR: Fail to download data from Zabbix server.");
-							return false;
-						}
-						return true;
-					}
-				}
-			} catch (Exception ex) {
-				LOGGER.warning("Fail to stop Zabbix monitor: " + ex.toString());
-				listener.getLogger().println(
-						"ERROR: Fail to stop Zabbix monitor: " + ex.toString());
-			}
-			LOGGER.warning("Cannot stop Zabbix monitor. Give up.");
-			listener.getLogger().println(
-					"WARNING: Cannot stop Zabbix monitor. Give up.");
-			logout(auth);
-			return false;
-		}
-		logout(auth);
-		endTime = new Date();
-		if (!downloadData(build, listener)) {
-			listener.getLogger().println(
-					"ERROR: Fail to download data from Zabbix server.");
-			return false;
-		}
-		return true;
+		return start(build.getProject().getName(), build.getId(), build
+				.getWorkspace().getRemote(), listener);
 	}
 
-	private boolean downloadData(AbstractBuild<?, ?> build,
-			BuildListener listener) throws IOException, InterruptedException {
+	private boolean downloadData(String projectName, String buildID,
+			String workspace, BuildListener listener) throws IOException,
+			InterruptedException {
 		PerfchartsRecorder.DescriptorImpl desc = (PerfchartsRecorder.DescriptorImpl) Jenkins
 				.getInstance().getDescriptor(PerfchartsRecorder.class);
 		String cgtHome = desc.getCgtHome();
@@ -308,14 +330,13 @@ public class ZabbixMonitor implements ResourceMonitor,
 			throw new RuntimeException("$CGT_HOME is not set for Perfcharts.");
 		}
 		List<String> arguments = new ArrayList<String>();
-		arguments.add(cgtHome + File.separator
-				+ Constants.CGT_ZABBIX_DL);
+		arguments.add(cgtHome + File.separator + Constants.CGT_ZABBIX_DL);
 
 		String relativePath = outputPath == null || outputPath.isEmpty() ? "monitoring"
 				: outputPath;
 		String pathOnAgent = relativePath.startsWith("/")
-				|| relativePath.startsWith("file:") ? relativePath : build
-				.getWorkspace().getRemote() + File.separator + relativePath;
+				|| relativePath.startsWith("file:") ? relativePath : workspace
+				+ File.separator + relativePath;
 		LOGGER.info("Copy NMON logs to Jenkins agent '" + pathOnAgent + "'...");
 		listener.getLogger().println(
 				"INFO: Copy NMON logs to Jenkins agent '" + pathOnAgent
@@ -357,20 +378,6 @@ public class ZabbixMonitor implements ResourceMonitor,
 		int returnCode = cgtProcess.waitFor();
 		boolean success = returnCode == 0;
 		return success;
-	}
-
-	@Override
-	public void collect(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public boolean isRuning(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) {
-		// TODO Auto-generated method stub
-		return false;
 	}
 
 	private void setHostStatus(Collection<Integer> hostIDs, int status,
@@ -495,6 +502,11 @@ public class ZabbixMonitor implements ResourceMonitor,
 
 	public void setEndTime(Date endTime) {
 		this.endTime = endTime;
+	}
+	@Override
+	public void checkRoles(RoleChecker checker, Callable<?, ? extends SecurityException> callable)
+			throws SecurityException {
+		checker.check(callable, Roles.SLAVE, Roles.MASTER);
 	}
 
 	public static class ZabbixAPIException extends Exception {

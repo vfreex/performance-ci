@@ -14,8 +14,10 @@ import org.kohsuke.stapler.StaplerResponse;
 import hudson.model.AbstractProject;
 
 public class PerfchartsTrendReport extends PerfchartsReport {
-	private final static Logger LOGGER = Logger.getLogger(PerfchartsTrendReport.class.getName());
+	private final static Logger LOGGER = Logger
+			.getLogger(PerfchartsTrendReport.class.getName());
 	private String tags;
+
 	public PerfchartsTrendReport(AbstractProject<?, ?> project) {
 		super(project);
 		// TODO Auto-generated constructor stub
@@ -28,11 +30,13 @@ public class PerfchartsTrendReport extends PerfchartsReport {
 
 	public void doMonoReport(StaplerRequest request, StaplerResponse response)
 			throws Exception {
+		response.setContentType("text/html");
 		synchronized (project) {
 			String dataFile = TrendReportManager
 					.getTrendMonoReportPath(project);
 			if (!new File(dataFile).exists()) {
-				IOUtils.write("<h1>No Trend Report Found.</h1>", response.getOutputStream());
+				IOUtils.write("<h1>No Trend Report Found.</h1>",
+						response.getOutputStream());
 				return;
 			}
 			IOHelpers.copySteam(new FileInputStream(dataFile),
@@ -42,6 +46,7 @@ public class PerfchartsTrendReport extends PerfchartsReport {
 
 	public void doTrendDataJS(StaplerRequest request, StaplerResponse response)
 			throws Exception {
+		response.setContentType("text/javascript");
 		synchronized (project) {
 			String dataFile = TrendReportManager.getTrendDataJSPath(project);
 			if (!new File(dataFile).exists()) {
@@ -65,8 +70,9 @@ public class PerfchartsTrendReport extends PerfchartsReport {
 			writeJSON(response, result);
 			return;
 		}
-		boolean success = TagManager.saveTagsStringOfLastTrendReportForProject(project, tagsString) && TrendReportManager
-				.generateReport(project, tagsString);
+		boolean success = TagManager.saveTagsStringOfLastTrendReportForProject(
+				project, tagsString)
+				&& TrendReportManager.generateReport(project, tagsString);
 		if (!success) {
 			result.put("error", 1);
 			result.put("errorMessage", "Fail to generate trend report.");
@@ -77,20 +83,24 @@ public class PerfchartsTrendReport extends PerfchartsReport {
 		result.put("errorMessage", "Generated.");
 		writeJSON(response, result);
 	}
+
 	public String getTags() {
 		if (tags == null) {
 			try {
-				this.tags = TagManager.loadTagsStringOfLastTrendReportForProject(project);
+				this.tags = TagManager
+						.loadTagsStringOfLastTrendReportForProject(project);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 		return tags;
 	}
+
 	public void setTags(String tags) {
 		this.tags = tags;
 		LOGGER.info("tag is changed to " + tags);
 	}
+
 	private static void writeJSON(StaplerResponse response, JSONObject json)
 			throws IOException {
 		IOUtils.write(json.toString(), response.getOutputStream());

@@ -157,6 +157,7 @@ public class PerfchartsRecorder extends Recorder {
 		build.addAction(new PerfchartsBuildAction(build));
 		listener.getLogger().println("INFO: Perf&Res report generated successfully.");
 		LOGGER.info("Perf&Res report generated successfully.");
+		
 		return true;
 	}
 

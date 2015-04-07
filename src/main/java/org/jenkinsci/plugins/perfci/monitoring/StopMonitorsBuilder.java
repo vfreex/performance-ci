@@ -6,18 +6,27 @@ import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.ParametersAction;
+import hudson.model.Project;
+import hudson.remoting.Callable;
+import hudson.remoting.RemoteOutputStream;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletException;
 
+import jenkins.MasterToSlaveFileCallable;
+import jenkins.SlaveToMasterFileCallable;
+import jenkins.model.Jenkins;
+import jenkins.security.Roles;
 import net.sf.json.JSONObject;
 
+import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -36,20 +45,8 @@ public class StopMonitorsBuilder extends Builder {
 	 * We'll use this from the <tt>config.jelly</tt>.
 	 */
 	@Override
-	public boolean perform(AbstractBuild<?,?> build, Launcher launcher,
+	public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) {
-		// This is where you 'build' the project.
-		// Since this is a dummy, we just say 'hello world' and call that a
-		// build.
-
-		// This also shows how you can consult the global configuration of the
-		// builder
-		// if (getDescriptor().getUseFrench()) {
-		// listener.getLogger().println("Hello, stop monitoring !");
-		// } else {
-		// listener.getLogger().println("Hello, stop monitoring !");
-		// }
-
 		ParametersAction paraAction = build.getAction(ParametersAction.class);
 		if (paraAction == null) {
 			listener.getLogger().println("ERROR: No monitors to stop.");
@@ -62,37 +59,18 @@ public class StopMonitorsBuilder extends Builder {
 			return false;
 		}
 		List<ResourceMonitor> monitors = para.getMonitors();
-		if (monitors == null || monitors.isEmpty()) {
-			listener.getLogger().println("ERROR: No monitors to stop.");
-			return false;
+		try {
+			Boolean r = launcher.getChannel().call(
+					new StopMonitorsCallable(build.getProject().getName(),
+							build.getId(), build.getWorkspace().getRemote(),
+							monitors, listener));
+			return r != null && r.booleanValue();
+		} catch (Exception e) {
+			RuntimeException re = new RuntimeException();
+			re.initCause(e);
+			throw re;
 		}
-		int stoppedMonitors = 0;
-		for (ResourceMonitor monitor : monitors) {
-			try {
-				LOGGER.info("Stopping monitor '" + monitor.getClass().getName()
-						+ "'...");
-				if (!monitor.stop(build, launcher, listener)) {
-					LOGGER.warning("Something goes wrong when trying stopping Monitor '"
-							+ monitor.getClass().getName() + "'.");
-					continue;
-				}
-				++stoppedMonitors;
-				LOGGER.info("Monitor '" + monitor.getClass().getName()
-						+ "' stopped.");
-			} catch (Exception e) {
-				e.printStackTrace();
-				LOGGER.warning("Opps! Something went wrong when trying stopping monitor '"
-						+ monitor.getClass().getName() + "'!");
-				return false;
-			}
-		}
-		if (stoppedMonitors == monitors.size()) {
-			LOGGER.info("All monitors stopped.");
-			return true;
-		} else {
-			LOGGER.warning("Opps! Something went wrong when trying stopping monitors! Mark this build failure.");
-			return false;
-		}
+
 	}
 
 	// Overridden for better type safety.
@@ -118,25 +96,6 @@ public class StopMonitorsBuilder extends Builder {
 	public static final class DescriptorImpl extends
 			BuildStepDescriptor<Builder> {
 
-		/**
-		 * Performs on-the-fly validation of the form field 'name'.
-		 *
-		 * @param value
-		 *            This parameter receives the value that the user has typed.
-		 * @return Indicates the outcome of the validation. This is sent to the
-		 *         browser.
-		 */
-		public FormValidation doCheckName(@QueryParameter String value)
-				throws IOException, ServletException {
-			if (value.length() == 0) {
-				return FormValidation.error("Please set a name");
-			}
-			if (value.length() < 4) {
-				return FormValidation.warning("Isn't the name too short?");
-			}
-			return FormValidation.ok();
-		}
-
 		public boolean isApplicable(Class<? extends AbstractProject> aClass) {
 			return true;
 		}
@@ -159,6 +118,86 @@ public class StopMonitorsBuilder extends Builder {
 			// like setUseFrench)
 			save();
 			return super.configure(req, formData);
+		}
+
+	}
+
+	private static class StopMonitorsCallable implements
+			Callable<Boolean, IOException> {
+		private static final long serialVersionUID = 1L;
+		private String projectName;
+		private String buildID;
+		private String workspace;
+		private List<ResourceMonitor> monitors;
+		private BuildListener listener;
+
+		public StopMonitorsCallable(String projectName, String buildID,
+				String workspace, List<ResourceMonitor> monitors,
+				BuildListener listener) {
+			super();
+			this.projectName = projectName;
+			this.buildID = buildID;
+			this.monitors = monitors;
+			this.listener = listener;
+			this.workspace = workspace;
+		}
+
+		@Override
+		public Boolean call() throws IOException {
+			final RemoteOutputStream ros = new RemoteOutputStream(
+					listener.getLogger());
+			final PrintStream logWritter = new PrintStream(ros);
+			try {
+				int stoppedMonitors = 0;
+				for (ResourceMonitor monitor : monitors) {
+					try {
+						LOGGER.info("Stopping monitor '"
+								+ monitor.getClass().getName() + "'...");
+						logWritter.println("INFO: Stopping monitor '"
+								+ monitor.getClass().getName() + "'...");
+						if (!monitor.stop(projectName, buildID, workspace,
+								listener)) {
+							LOGGER.warning("Something goes wrong when trying stopping Monitor '"
+									+ monitor.getClass().getName() + "'.");
+							logWritter
+									.println("WARNING: Something goes wrong when trying stopping Monitor '"
+											+ monitor.getClass().getName()
+											+ "'.");
+							continue;
+						}
+						++stoppedMonitors;
+						LOGGER.info("Monitor '" + monitor.getClass().getName()
+								+ "' stopped.");
+						logWritter.println("INFO: Monitor '"
+								+ monitor.getClass().getName() + "' stopped.");
+					} catch (Exception e) {
+						e.printStackTrace();
+						LOGGER.warning("Opps! Something went wrong when trying stopping monitor '"
+								+ monitor.getClass().getName() + "'!");
+						logWritter
+								.println("WARNING: Opps! Something went wrong when trying stopping monitor '"
+										+ monitor.getClass().getName() + "'!");
+						return false;
+					}
+				}
+				if (stoppedMonitors == monitors.size()) {
+					LOGGER.info("All monitors stopped.");
+					logWritter.println("INFO: All monitors stopped.");
+					return true;
+				} else {
+					LOGGER.warning("Opps! Something went wrong when trying stopping monitors! Mark this build failure.");
+					logWritter
+							.println("WARNING: Opps! Something went wrong when trying stopping monitors! Mark this build failure.");
+					return false;
+				}
+			} finally {
+				logWritter.close();
+			}
+		}
+
+		@Override
+		public void checkRoles(RoleChecker checker) throws SecurityException {
+			checker.check(this, Roles.SLAVE, Roles.MASTER);
 		}
 
 	}

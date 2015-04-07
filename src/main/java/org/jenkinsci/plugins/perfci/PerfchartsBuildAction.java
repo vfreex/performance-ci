@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.perfci;
 
 import hudson.model.Action;
+import hudson.model.Result;
 import hudson.model.AbstractBuild;
 
 import java.io.FileInputStream;
@@ -11,11 +12,14 @@ import java.util.logging.Logger;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.io.IOUtils;
+
+import net.sf.json.JSONArray;
+
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 public class PerfchartsBuildAction implements Action {
-	private static final String ACTION_NAME = "Performance & Monitoring Report";
+	private static final String ACTION_NAME = "Performance Report";
 	private static final String ACTION_PATH = "detailedReport";
 	private static final String ACTION_ICON = "graph.gif";
 	private static final Logger LOGGER = Logger
@@ -23,6 +27,7 @@ public class PerfchartsBuildAction implements Action {
 	public final AbstractBuild<?, ?> build;
 
 	private String tags;
+	private String destBuild;
 
 	public PerfchartsBuildAction(AbstractBuild<?, ?> build) {
 		LOGGER.warning("PerfchartsBuildAction constructed.");
@@ -51,6 +56,7 @@ public class PerfchartsBuildAction implements Action {
 				Constants.OUTPUT_DIR_RELATIVE_PATH);
 		String monoReportFile = IOHelpers.concatPathParts(outputPath,
 				Constants.MONO_REPORT_NAME);
+		response.setContentType("text/html");
 		IOHelpers.copySteam(new FileInputStream(monoReportFile),
 				response.getOutputStream());
 	}
@@ -64,10 +70,11 @@ public class PerfchartsBuildAction implements Action {
 				"data.js");
 		response.setContentType("text/javascript");
 		try {
-		IOHelpers.copySteam(new FileInputStream(dataFile),
-				response.getOutputStream());
-		}catch (FileNotFoundException ex) {
-			IOUtils.write("<h1>No Report Found.</h1>", response.getOutputStream());
+			IOHelpers.copySteam(new FileInputStream(dataFile),
+					response.getOutputStream());
+		} catch (FileNotFoundException ex) {
+			IOUtils.write("<h1>No Report Found.</h1>",
+					response.getOutputStream());
 		}
 	}
 
@@ -93,9 +100,40 @@ public class PerfchartsBuildAction implements Action {
 		writeJSON(response, result);
 	}
 
+	public void doGetDestBuilds(StaplerRequest request, StaplerResponse response)
+			throws IOException {
+		response.setContentType("text/json");
+		JSONObject result = new JSONObject();
+		if (build.getResult().isWorseThan(Result.SUCCESS))
+		{
+			result.put("error", 1);
+			result.put("errorMessage", "This is an unsuccessful build.");
+			return;
+		}
+		JSONArray builds = new JSONArray();
+		for (AbstractBuild<?, ?> buildItem : build.getProject().getBuilds()) {
+			if (buildItem.number >= build.number || buildItem.getResult().isWorseThan(Result.SUCCESS))
+				continue;
+			JSONObject buildItemJSON = new JSONObject();
+			buildItemJSON.put("value", buildItem.number);
+			buildItemJSON.put("text", "#" + buildItem.number + " - "
+					+ buildItem.getId());
+			builds.add(buildItemJSON);
+		}
+		result.put("error", 0);
+		result.put("result", builds);
+		//result.put("resultCount", builds.size());
+		writeJSON(response, result);
+	}
+
 	private static void writeJSON(StaplerResponse response, JSONObject json)
 			throws IOException {
 		IOUtils.write(json.toString(), response.getOutputStream());
+	}
+
+	public PerfchartsComparisonReport getComparisonReport(int buildNumber) {
+		return new PerfchartsComparisonReport(build.getProject(), build, build
+				.getProject().getBuildByNumber(buildNumber));
 	}
 
 	public String getTags() {
@@ -113,6 +151,14 @@ public class PerfchartsBuildAction implements Action {
 	public void setTags(String tags) {
 		this.tags = tags;
 		LOGGER.info("tag is changed to " + tags);
+	}
+
+	public String getDestBuild() {
+		return destBuild;
+	}
+
+	public void setDestBuild(String destBuild) {
+		this.destBuild = destBuild;
 	}
 
 }
