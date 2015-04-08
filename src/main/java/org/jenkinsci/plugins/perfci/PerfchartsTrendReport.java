@@ -64,7 +64,7 @@ public class PerfchartsTrendReport extends PerfchartsReport {
 		if (tagsString == null)
 			tagsString = "";
 		JSONObject result = new JSONObject();
-		if (!tagsString.isEmpty() && !TagManager.isTagsStringValid(tagsString)) {
+		if (!tagsString.isEmpty() && !TagManager.isTagsInputStringValid(tagsString)) {
 			result.put("error", 1);
 			result.put("errorMessage", "Invalid tag list format.");
 			writeJSON(response, result);

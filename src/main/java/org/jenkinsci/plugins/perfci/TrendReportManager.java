@@ -67,18 +67,22 @@ public class TrendReportManager {
 
 			for (AbstractBuild<?, ?> build : project.getBuilds()) {
 				Set<String> buildTags = TagManager.loadTagsForBuild(build);
-				if (!match(buildTags, targetTags)) {
-//					LOGGER.info("skipped build#" + build.number + " tags: "
-//							+ String.join(",", buildTags) + ", target tags: "
-//							+ String.join(",", targetTags));
+				if (!targetTags.contains("#" + build.number)
+						&& !match(buildTags, targetTags)) {
+					// LOGGER.info("skipped build#" + build.number + " tags: "
+					// + String.join(",", buildTags) + ", target tags: "
+					// + String.join(",", targetTags));
 					continue;
 				}
 				LOGGER.info("matched build#" + build.number + " tags: "
-						+ Utilities.joinArray(",", buildTags) + ", target tags: "
+						+ Utilities.joinArray(",", buildTags)
+						+ ", target tags: "
 						+ Utilities.joinArray(",", targetTags));
 				String perfDataPath = getPerfDataPathForBuild(build);
 				if (!new File(perfDataPath).exists()) {
-					LOGGER.info("Skip build#" + build.number + " for trend report generation: Its perf&res report is not found.");
+					LOGGER.info("Skip build#"
+							+ build.number
+							+ " for trend report generation: Its perf&res report is not found.");
 					continue;
 				}
 				trendInputWriter.write(Integer.toString(build.number));

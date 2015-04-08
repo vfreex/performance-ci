@@ -269,38 +269,69 @@ function ChartGeneration($) {
 		var $table = $("<table class='chart_table'/>").appendTo($chart);
 		if (chart.key)
 			$table.attr("data-key", chart.key);
-
-		var $tableHeaderRow = $("<tr/>").appendTo(
-				$("<thead/>").appendTo($table));
-		for (var i = 0; i < chart.header.length; ++i) {
-			$("<th/>").text(chart.header[i]).appendTo($tableHeaderRow);
-		}
-		var $tbody = $("<tbody/>").appendTo($table);
-		for (var i = 0; i < chart.rows.length; ++i) {
-			var $tableRow = $("<tr/>").appendTo($tbody);
-			var row = chart.rows[i];
-			for (var j = 0; j < row.length; ++j) {
-				var cell = row[j];
-				var isFloat = cell.valueType === "double"
-						|| cell.valueType === "float";
-				var isNumber = isFloat || typeof cell.value === "number"
-						|| cell.valueType === "int"
-						|| cell.valueType === "long";
-				var showText = cell.value;
-				if (isFloat) {
-					showText = cell.value !== null ? cell.value.toFixed(3)
-							: (cell.rawValue === "NaN" ? "N/A" : cell.rawValue);
-				}
-				var $td = $("<td/>").text(showText).appendTo($tableRow);
-				if (cell.cssClass)
-					$td.addClass(cell.cssClass);
-				if (isNumber)
-					$td.css("text-align", "right");
+		if (chart.header) {
+			var $tableHeaderRow = $("<tr/>").appendTo(
+					$("<thead/>").appendTo($table));
+			for (var i = 0; i < chart.header.length; ++i) {
+				$("<th/>").text(chart.header[i]).appendTo($tableHeaderRow);
 			}
 		}
-		$table.tablesorter().stickyTableHeaders();
+		if (chart.topRows) {
+			var $thead = $("<tbody class=\"tablesorter-no-sort\"/>").appendTo($table);
+			for (var i = 0; i < chart.topRows.length; ++i) {
+				var $tableRow = $("<tr/>").appendTo($thead);
+				var row = chart.topRows[i];
+				for (var j = 0; j < row.length; ++j) {
+					var cell = row[j];
+					createTableCell(row[j]).appendTo($tableRow);
+				}
+			}
+		}
+		if (chart.rows) {
+			var $tbody = $("<tbody/>").appendTo($table);
+			for (var i = 0; i < chart.rows.length; ++i) {
+				var $tableRow = $("<tr/>").appendTo($tbody);
+				var row = chart.rows[i];
+				for (var j = 0; j < row.length; ++j) {
+					var cell = row[j];
+					createTableCell(row[j]).appendTo($tableRow);
+				}
+			}
+		}
+		if (chart.bottomRows) {
+			var $tfoot = $("<tbody class=\"tablesorter-no-sort\"/>").appendTo($table);
+			for (var i = 0; i < chart.bottomRows.length; ++i) {
+				var $tableRow = $("<tr/>").appendTo($tfoot);
+				var row = chart.bottomRows[i];
+				for (var j = 0; j < row.length; ++j) {
+					var cell = row[j];
+					createTableCell(row[j]).appendTo($tableRow);
+				}
+			}
+		}
+		$table.tablesorter({
+			 cssInfoBlock : "tablesorter-no-sort"
+		}).stickyTableHeaders();
 	}
-	// will be deprecated 
+
+	function createTableCell(cell) {
+		var isFloat = cell.valueType === "double" || cell.valueType === "float";
+		var isNumber = isFloat || typeof cell.value === "number"
+				|| cell.valueType === "int" || cell.valueType === "long";
+		var showText = cell.value;
+		if (isFloat) {
+			showText = cell.value !== null ? cell.value.toFixed(3)
+					: (cell.rawValue === "NaN" ? "N/A" : cell.rawValue);
+		}
+		var $td = $("<td/>").text(showText);
+		if (cell.cssClass)
+			$td.addClass(cell.cssClass);
+		if (isNumber)
+			$td.css("text-align", "right");
+		return $td;
+	}
+
+	// will be deprecated
 	function drawJmeterSummaryChart($chart, chart) {
 		$chart.append($("<h3 class='chart_title'/>").text(chart.title)).append(
 				$("<h4 class='chart_subtitle'/>").text(chart.subtitle));

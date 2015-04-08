@@ -87,7 +87,7 @@
 					<fieldset>
 						<label for="txt_tag">Included tags</label>
 						<input id="txt_tag" type="text" name="tags" value="${it.tags}"
-							placeholder="ex. normal,success" title="a comma seperated list" />
+							placeholder="ex. normal,success,#1,#6" title="a comma seperated list" />
 						<input id="btn_generate_trend" type="button" value="generate" />
 						<span id="tag_error_msg" class="error_msg"></span>
 					</fieldset>

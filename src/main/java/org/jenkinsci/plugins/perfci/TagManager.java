@@ -21,12 +21,18 @@ public class TagManager {
 			Constants.PERF_CHARTS_RELATIVE_PATH, "tags");
 	public final static Pattern TAGS_PATTERN = Pattern
 			.compile("^\\w+([,]\\w+)*$");
+	public final static Pattern TAGS_INPUT_PATTERN = Pattern
+			.compile("^(#\\d+|\\w+)([,](#\\d+|\\w+))*$");
 
 	private static String loadTagsString(File tagFile) throws IOException {
+		return loadTagsString(tagFile, false);
+	}
+	
+	private static String loadTagsString(File tagFile, boolean ignoreCheck) throws IOException {
 		LOGGER.info("load tags file '" + tagFile.getAbsolutePath() + "'.");
 		try {
 			String content = IOHelpers.readToEnd(tagFile);
-			if (!isTagsStringValid(content)) {
+			if (!ignoreCheck && !isTagsStringValid(content)) {
 				LOGGER.warning("Invalid tags file '"
 						+ tagFile.getAbsolutePath() + "'.");
 				return null;
@@ -57,8 +63,13 @@ public class TagManager {
 
 	private static boolean saveTagsString(File tagFile, String tagsString)
 			throws FileNotFoundException, IOException {
+		return saveTagsString(tagFile, tagsString, false);
+	}
+	
+	private static boolean saveTagsString(File tagFile, String tagsString, boolean ignoreCheck)
+			throws FileNotFoundException, IOException {
 		if (tagsString != null && !tagsString.isEmpty()
-				&& !isTagsStringValid(tagsString)) {
+				&& !ignoreCheck && !isTagsStringValid(tagsString)) {
 			LOGGER.warning("Invalid tags string '" + tagsString + "'.");
 			return false;
 		}
@@ -80,18 +91,21 @@ public class TagManager {
 	public static boolean isTagsStringValid(String tags) {
 		return TAGS_PATTERN.matcher(tags).matches();
 	}
+	public static boolean isTagsInputStringValid(String tags) {
+		return TAGS_INPUT_PATTERN.matcher(tags).matches();
+	}
 
 	public static String loadTagsStringOfLastTrendReportForProject(
 			AbstractProject<?, ?> proj) throws IOException {
 		File tagFile = new File(IOHelpers.concatPathParts(proj.getBuildDir()
 				.getAbsolutePath(), TAG_RELATIVE_PATH));
-		return loadTagsString(tagFile);
+		return loadTagsString(tagFile, true);
 	}
 
 	public static boolean saveTagsStringOfLastTrendReportForProject(
 			AbstractProject<?, ?> proj, String tagsString) throws IOException {
 		File tagFile = new File(IOHelpers.concatPathParts(proj.getBuildDir()
 				.getAbsolutePath(), TAG_RELATIVE_PATH));
-		return saveTagsString(tagFile, tagsString);
+		return saveTagsString(tagFile, tagsString, true);
 	}
 }
