@@ -109,12 +109,7 @@ function ChartGeneration($) {
 				var row = chart.rows[i];
 				for (var j = 0; j < row.length; ++j) {
 					var cell = row[j];
-					createTableCell(row[j]).appendTo($tableRgit add .
-							git st
-							git ci -m 'update binary package'
-							git push redhat perfcharts-binary:perfcharts-binary
-							git push origin perfcharts-binary:binary
-							git co perfchartsow);
+					createTableCell(row[j]).appendTo($tableRow);
 				}
 			}
 		}
