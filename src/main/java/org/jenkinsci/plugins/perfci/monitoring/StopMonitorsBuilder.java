@@ -6,29 +6,21 @@ import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.ParametersAction;
-import hudson.model.Project;
 import hudson.remoting.Callable;
 import hudson.remoting.RemoteOutputStream;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
-import hudson.util.FormValidation;
 
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.logging.Logger;
 
-import javax.servlet.ServletException;
-
-import jenkins.MasterToSlaveFileCallable;
-import jenkins.SlaveToMasterFileCallable;
-import jenkins.model.Jenkins;
 import jenkins.security.Roles;
 import net.sf.json.JSONObject;
 
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 public class StopMonitorsBuilder extends Builder {
@@ -191,6 +183,7 @@ public class StopMonitorsBuilder extends Builder {
 					return false;
 				}
 			} finally {
+				logWritter.flush();
 				logWritter.close();
 			}
 		}

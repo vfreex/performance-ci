@@ -186,6 +186,7 @@ public class StartMonitorsBuilder extends Builder {
 					return false;
 				return true;
 			} finally {
+				logWritter.flush();
 				logWritter.close();
 			}
 		}

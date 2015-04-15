@@ -1,3 +1,7 @@
+/**
+* Perfcharts Default Front-End Support
+* Updated 10 Apr, 2015
+*/
 html {
 	font-size: 100%;
 }
@@ -57,14 +61,27 @@ header, #content, footer {
 .legend {
 	width: 900px;
 	margin: 0 auto;
+	overflow: auto;
+	max-height: 80px;
 }
 
-/* .category_tick { */
-/* 	transform: rotate(-90deg); */
-/* 	float: left; */
-/* 	text-align : right; */
-/* 	transform-origin: 0 0 */
-/* } */
+.chart_table_container {
+	max-height: 500px;
+	overflow: auto;
+}
+
+.chart_controls_pad {
+	width: 900px;
+	margin: 0 auto;
+}
+
+.category_tick {
+	transform: translateX(50%) rotate(20deg);
+	transform-origin: 0 0;
+	min-height: 50px;
+	font-weight: bold;
+}
+
 .x_label {
 	margin: 5px 60px;
 	text-align: center;
@@ -87,7 +104,7 @@ header, #content, footer {
 	border: 2px solid;
 	border-collapse: collapse;
 	margin: 0 auto;
-/* 	table-layout: fixed; */
+	/* 	table-layout: fixed; */
 }
 
 .chart_table thead {
@@ -129,6 +146,7 @@ header, #content, footer {
 .perfcharts_warning {
 	color: red;
 }
+
 .perfcharts_fine {
 	color: green;
 }

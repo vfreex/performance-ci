@@ -15,7 +15,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -182,71 +181,116 @@ public class NmonMonitor implements ResourceMonitor,
 				client.authPassword(name, password);
 			Session.Command cmd;
 			Session session = client.startSession();
-			listener.getLogger().println("INFO: Checking NMON existence.");
-			cmd = session.exec("ls -lrt /tmp/jenkins-perfci/bin/nmon");
+			listener.getLogger().println(
+					"INFO: Checking existence for monitoring tools.");
+			cmd = session
+					.exec("ls -lrt /tmp/jenkins-perfci/bin/nmon /tmp/jenkins-perfci/bin/cpuload_monitor | wc -l");
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
-			if (cmd.getExitStatus() == 2) {
+			if (!"2".equals(IOUtils.readFully(cmd.getInputStream()).toString()
+					.trim())) {
 				listener.getLogger().println(
 						"INFO: NMON does not exist. Uploading...");
+				// session = client.startSession();
+				// cmd = session.exec("mkdir -p /tmp/jenkins-perfci/bin");
+				// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+				// session.close();
+				// if (cmd.getExitStatus() != 0)
+				// return false;
+				{
+					final URL nmonfile = getClass()
+							.getResource(
+									"/org/jenkinsci/plugins/perfci/monitoring/NmonMonitor/jenkins-perfci-upload.tar.xz");
+					final InputStream in = nmonfile.openStream();
+					final ByteArrayOutputStream out = new ByteArrayOutputStream();
+					org.apache.commons.io.IOUtils.copy(in, out);
+					in.close();
+					final byte[] bytes = out.toByteArray();
+					out.close();
+					client.newSCPFileTransfer().upload(
+							new InMemorySourceFile() {
+								public String getName() {
+									return "jenkins-perfci-upload.tar.xz";
+								}
+
+								public long getLength() {
+									return bytes.length;
+								}
+
+								public InputStream getInputStream()
+										throws IOException {
+									return new ByteArrayInputStream(bytes);
+								}
+							}, "/tmp/");
+					listener.getLogger()
+							.println(
+									"INFO: jenkins-perfci-upload.tar.xz has been uploaded to target host.");
+				}
+				listener.getLogger()
+						.println(
+								"INFO: extracting files from 'jenkins-perci-upload.tar.xz'...");
 				session = client.startSession();
-				cmd = session.exec("mkdir -p /tmp/jenkins-perfci/bin");
+				cmd = session
+						.exec("cd /tmp && tar -xJvf /tmp/jenkins-perfci-upload.tar.xz");
 				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 				session.close();
-				if (cmd.getExitStatus() != 0)
+				if (cmd.getExitStatus() != 0) {
+					listener.getLogger()
+							.println(
+									"WARNING: Cannot extract files from 'jenkins-perci-upload.tar.xz'.");
 					return false;
-				final URL nmonfile = getClass()
-						.getResource(
-								"/org/jenkinsci/plugins/perfci/monitoring/NmonMonitor/nmon");
-				final InputStream in = nmonfile.openStream();
-				final ByteArrayOutputStream out = new ByteArrayOutputStream();
-				org.apache.commons.io.IOUtils.copy(in, out);
-				in.close();
-				final byte[] bytes = out.toByteArray();
-				out.close();
-				client.newSCPFileTransfer().upload(new InMemorySourceFile() {
-					public String getName() {
-						return "nmon";
-					}
-
-					public long getLength() {
-						return bytes.length;
-					}
-
-					public InputStream getInputStream() throws IOException {
-						return new ByteArrayInputStream(bytes);
-					}
-				}, "/tmp/jenkins-perfci/bin/");
-				listener.getLogger().println(
-						"INFO: NMON has been uploaded to target host.");
+				}
 			}
-			listener.getLogger().println("INFO: Starting NMON deamon...");
+			listener.getLogger().println(
+					"INFO: Starting NMON & cpuload_monitor deamons...");
 			String remoteLogDir = getOutputDir(projectName, buildID);
 			session = client.startSession();
-			cmd = session
-					.exec("mkdir -p '"
-							+ remoteLogDir
-							+ "' && chmod +x /tmp/jenkins-perfci/bin/nmon && /tmp/jenkins-perfci/bin/nmon -f -t -s"
-							+ Integer.parseInt(interval) + " -c64080 -m "
-							+ remoteLogDir);
+			int intervalValue = Integer.parseInt(interval);
+			// cmd = session
+			// .exec("mkdir -p '"
+			// + remoteLogDir
+			// +
+			// "' && chmod +x /tmp/jenkins-perfci/bin/nmon /tmp/jenkins-perfci/bin/cpuload_monitor && (nohup /tmp/jenkins-perfci/bin/cpuload_monitor -t "
+			// + intervalValue + " -d '" + remoteLogDir
+			// + "' &) && /tmp/jenkins-perfci/bin/nmon -f -t -s"
+			// + intervalValue + " -m '" + remoteLogDir + "'");
+			cmd = session.exec("/tmp/jenkins-perfci/bin/start_monitor '"
+					+ projectName + "' '" + buildID + "' " + intervalValue);
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
-			if (cmd.getExitStatus() != 0)
-				return false;
-			listener.getLogger().println(
-					"INFO: Checking whether NMON is running...");
-			session = client.startSession();
-			cmd = session
-					.exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-							+ projectDir + "' | awk '{print $2}'");
-			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-			session.close();
-			if (cmd.getExitStatus() != 0)
-				return false;
-			if (IOUtils.readFully(cmd.getInputStream()).toString().trim()
-					.isEmpty()) {
+			if (cmd.getExitStatus() != 0) {
+				listener.getLogger().println(
+						"INFO: error code=" + cmd.getExitStatus());
 				return false;
 			}
+			// listener.getLogger().println(
+			// "INFO: Checking whether cpuload_monitor is running...");
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[c]puload_monitor | grep '"
+			// + projectDir + "' | awk '{print $2}'");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0)
+			// return false;
+			// if (IOUtils.readFully(cmd.getInputStream()).toString().trim()
+			// .isEmpty()) {
+			// return false;
+			// }
+			// listener.getLogger().println(
+			// "INFO: Checking whether NMON is running...");
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0)
+			// return false;
+			// if (IOUtils.readFully(cmd.getInputStream()).toString().trim()
+			// .isEmpty()) {
+			// return false;
+			// }
 			return true;
 		} catch (UserAuthException ex) {
 			throw ex;
@@ -293,75 +337,88 @@ public class NmonMonitor implements ResourceMonitor,
 				client.authPassword(name, password);
 			listener.getLogger().println("INFO: Try killing NMON deamon...");
 			Session.Command cmd;
-			Session session = client.startSession();
-			cmd = session
-					.exec("sync && kill `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-							+ projectDir + "' | awk '{print $2}'`");
-			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-			session.close();
-			if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
-				return false;
+			Session session;
 			session = client.startSession();
-			cmd = session
-					.exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-							+ projectDir + "' | awk '{print $2}'");
+			cmd = session.exec("/tmp/jenkins-perfci/bin/stop_monitor '"
+					+ projectName + "' '" + buildID + "'");
 			cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 			session.close();
-			if (cmd.getExitStatus() != 0)
+			if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1) {
+				LOGGER.info("Cannot stop.");
+				listener.getLogger().println("INFO: Cannot stop.");
 				return false;
-			if (!IOUtils.readFully(cmd.getInputStream()).toString().trim()
-					.isEmpty()) {
-				LOGGER.info("Cannot stop, try 'kill -s INT'...");
-				listener.getLogger().println(
-						"INFO: Cannot stop, try 'kill -s INT'...");
-				session = client.startSession();
-				cmd = session
-						.exec("sync && kill -s INT `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-								+ projectDir + "' | awk '{print $2}'`");
-				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-				session.close();
-				if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
-					return false;
-				session = client.startSession();
-				cmd = session
-						.exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-								+ projectDir + "' | awk '{print $2}'");
-				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-				session.close();
-				if (cmd.getExitStatus() != 0)
-					return false;
-				if (!IOUtils.readFully(cmd.getInputStream()).toString().trim()
-						.isEmpty()) {
-					LOGGER.info("Cannot stop, try 'kill -s KILL'...");
-					listener.getLogger().println(
-							"INFO: Cannot stop, try 'kill -s KILL'...");
-					session = client.startSession();
-					cmd = session
-							.exec("sync && kill -s KILL `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-									+ projectDir + "' | awk '{print $2}'`");
-					cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-					session.close();
-					if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
-						return false;
-					session = client.startSession();
-					cmd = session
-							.exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-									+ projectDir + "' | awk '{print $2}'");
-					cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-					session.close();
-					if (cmd.getExitStatus() != 0)
-						return false;
-					if (!IOUtils.readFully(cmd.getInputStream()).toString()
-							.trim().isEmpty()) {
-						LOGGER.info("Oops! Still cannot stop. That was strange. Give up this try.");
-						listener.getLogger()
-								.println(
-										"WARNING: Still cannot stop. That was strange. Give up this try.");
-						return false;
-					}
-				}
 			}
-
+			// {
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sync && kill `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'`");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
+			// return false;
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0)
+			// return false;
+			// if (!IOUtils.readFully(cmd.getInputStream()).toString().trim()
+			// .isEmpty()) {
+			// LOGGER.info("Cannot stop, try 'kill -s INT'...");
+			// listener.getLogger().println(
+			// "INFO: Cannot stop, try 'kill -s INT'...");
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sync && kill -s INT `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'`");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
+			// return false;
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0)
+			// return false;
+			// if (!IOUtils.readFully(cmd.getInputStream()).toString()
+			// .trim().isEmpty()) {
+			// LOGGER.info("Cannot stop, try 'kill -s KILL'...");
+			// listener.getLogger().println(
+			// "INFO: Cannot stop, try 'kill -s KILL'...");
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sync && kill -s KILL `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'`");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0
+			// && cmd.getExitStatus() != 1)
+			// return false;
+			// session = client.startSession();
+			// cmd = session
+			// .exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
+			// + projectDir + "' | awk '{print $2}'");
+			// cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+			// session.close();
+			// if (cmd.getExitStatus() != 0)
+			// return false;
+			// if (!IOUtils.readFully(cmd.getInputStream()).toString()
+			// .trim().isEmpty()) {
+			// LOGGER.info("Oops! Still cannot stop. That was strange. Give up this try.");
+			// listener.getLogger()
+			// .println(
+			// "WARNING: Still cannot stop. That was strange. Give up this try.");
+			// return false;
+			// }
+			// }
+			// }
+			// }
 			String relativePathForNMONFiles = outputPath == null
 					|| outputPath.isEmpty() ? "monitoring" : outputPath;
 			String pathOnAgent = relativePathForNMONFiles.startsWith("/")
@@ -460,10 +517,10 @@ public class NmonMonitor implements ResourceMonitor,
 	}
 
 	@Override
-	public void checkRoles(RoleChecker checker, Callable<?, ? extends SecurityException> callable)
+	public void checkRoles(RoleChecker checker,
+			Callable<?, ? extends SecurityException> callable)
 			throws SecurityException {
 		checker.check(callable, Roles.SLAVE, Roles.MASTER);
 	}
-
 
 }
