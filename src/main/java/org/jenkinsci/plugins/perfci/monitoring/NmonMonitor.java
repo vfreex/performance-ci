@@ -200,7 +200,7 @@ public class NmonMonitor implements ResourceMonitor,
 				{
 					final URL nmonfile = getClass()
 							.getResource(
-									"/org/jenkinsci/plugins/perfci/monitoring/NmonMonitor/jenkins-perfci-upload.tar.xz");
+									"/org/jenkinsci/plugins/perfci/monitoring/NmonMonitor/jenkins-perfci-upload.tar.gz");
 					final InputStream in = nmonfile.openStream();
 					final ByteArrayOutputStream out = new ByteArrayOutputStream();
 					org.apache.commons.io.IOUtils.copy(in, out);
@@ -210,7 +210,7 @@ public class NmonMonitor implements ResourceMonitor,
 					client.newSCPFileTransfer().upload(
 							new InMemorySourceFile() {
 								public String getName() {
-									return "jenkins-perfci-upload.tar.xz";
+									return "jenkins-perfci-upload.tar.gz";
 								}
 
 								public long getLength() {
@@ -224,20 +224,20 @@ public class NmonMonitor implements ResourceMonitor,
 							}, "/tmp/");
 					listener.getLogger()
 							.println(
-									"INFO: jenkins-perfci-upload.tar.xz has been uploaded to target host.");
+									"INFO: jenkins-perfci-upload.tar.gz has been uploaded to target host.");
 				}
 				listener.getLogger()
 						.println(
-								"INFO: extracting files from 'jenkins-perci-upload.tar.xz'...");
+								"INFO: extracting files from 'jenkins-perfci-upload.tar.gz'...");
 				session = client.startSession();
 				cmd = session
-						.exec("cd /tmp && tar -xJvf /tmp/jenkins-perfci-upload.tar.xz");
+						.exec("cd /tmp && tar -xzvf /tmp/jenkins-perfci-upload.tar.gz");
 				cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
 				session.close();
 				if (cmd.getExitStatus() != 0) {
 					listener.getLogger()
 							.println(
-									"WARNING: Cannot extract files from 'jenkins-perci-upload.tar.xz'.");
+									"WARNING: Cannot extract files from 'jenkins-perfci-upload.tar.gz'.");
 					return false;
 				}
 			}
