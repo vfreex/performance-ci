@@ -149,7 +149,7 @@ public class StartMonitorsBuilder extends Builder {
 											+ monitor.getClass().getName()
 											+ "'...");
 									if (!monitor.start(projectName, buildID,
-											workspace, listener)) {
+											workspace, logWritter)) {
 										errorCount.incrementAndGet();
 										break;
 									}
@@ -187,7 +187,6 @@ public class StartMonitorsBuilder extends Builder {
 				return true;
 			} finally {
 				logWritter.flush();
-				logWritter.close();
 			}
 		}
 

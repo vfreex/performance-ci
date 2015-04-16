@@ -227,8 +227,8 @@ function ChartGeneration($) {
 					.data("tag", {
 						sid : stringID,
 						chart : chart
-					}).prop("checked", chart._isGroupShowMap[stringID]).change(
-							on_cb_group_list_item_changed).appendTo(
+					}).prop("checked", chart._groupShowBIT.get(stringID))
+					.change(on_cb_group_list_item_changed).appendTo(
 							$item_content);
 			$("<span/>").text(stringValue).appendTo($item_content);
 		}
@@ -237,21 +237,26 @@ function ChartGeneration($) {
 		$("<input type='button' value='clear selection' />").click(function() {
 			$(".cb_bar_group_selector").prop("checked", false);
 			chart.series = [];
-			chart._isGroupShowMap = {};
+			chart._groupShowBIT = new BITree(chart.stringMapSize);
 			redraw(plot.getPlaceholder(), plot, chart, true);
 		}).appendTo($showHildAllButtons);
-		$("<input type='button' value='select all' />").click(function() {
-			$(".cb_bar_group_selector").prop("checked", true);
-			chart._isGroupShowMap = {};
-			for (var stringID in chart.stringMap)
-				chart._isGroupShowMap[stringID] = true;
-			regenerateShowSeriesForBarChart(chart, chart.plot.getOptions());
-			var xaxisOption = plot.getXAxes()[0].options;
-			xaxisOption._zoomed = false;
-			xaxisOption.min = plot.getOptions().xaxis.min;
-			xaxisOption.max = plot.getOptions().xaxis.max;
-			redraw(plot.getPlaceholder(), plot, chart, false);
-		}).appendTo($showHildAllButtons);
+		$("<input type='button' value='select all' />")
+				.click(
+						function() {
+							$(".cb_bar_group_selector").prop("checked", true);
+							chart._groupShowBIT = new BITree(
+									chart.stringMapSize);
+							for (var stringID = 1; stringID <= chart.stringMapSize; stringID++) {
+								chart._groupShowBIT.update(stringID, 1);
+							}
+							regenerateShowSeriesForBarChart(chart, chart.plot
+									.getOptions());
+							var xaxisOption = plot.getXAxes()[0].options;
+							xaxisOption._zoomed = false;
+							xaxisOption.min = plot.getOptions().xaxis.min;
+							xaxisOption.max = plot.getOptions().xaxis.max;
+							redraw(plot.getPlaceholder(), plot, chart, false);
+						}).appendTo($showHildAllButtons);
 	}
 
 	function on_cb_group_list_item_changed(e) {
@@ -259,9 +264,10 @@ function ChartGeneration($) {
 		var state = $this.is(":checked");
 		var tag = $this.data("tag");
 		var chart = tag.chart;
-		var isGroupShowMap = chart._isGroupShowMap;
+		var groupShowBIT = chart._groupShowBIT;
 		var plot = chart.plot;
-		isGroupShowMap[tag.sid] = state;
+		// isGroupShowMap[tag.sid] = state;
+		groupShowBIT.update(tag.sid, state ? 1 : -1);
 		regenerateShowSeriesForBarChart(chart, plot.getOptions());
 		var xaxisOption = plot.getXAxes()[0].options;
 		xaxisOption._zoomed = false;
@@ -270,21 +276,63 @@ function ChartGeneration($) {
 		redraw(plot.getPlaceholder(), plot, chart, false);
 	}
 
+	function BITree(N) {
+		this.N = N;
+		this.data = new Array();
+	}
+	BITree.prototype = {
+		lowbit : function(x) {
+			return x & -x;
+		},
+		update : function(index, value) {
+			index = Number.parseInt(index);
+			while (index <= this.N) {
+				if (!this.data[index])
+					this.data[index] = value;
+				else
+					this.data[index] += value;
+				index += this.lowbit(index);
+			}
+		},
+		getSum : function(index) {
+			index = Number.parseInt(index);
+			var s = 0;
+			while (index > 0) {
+				s += this.data[index] ? this.data[index] : 0;
+				index -= this.lowbit(index);
+			}
+			return s;
+		},
+		get : function(index) {
+			return this.getSum(index) - this.getSum(index - 1);
+		}
+	};
+
 	function regenerateShowSeriesForBarChart(chart, options) {
 		var rawSeries = chart._rawSeries ? chart._rawSeries : chart.series;
 		var map = chart.stringMap;
 		var isGroupShowMap;
-		if (!chart._isGroupShowMap) {
-			isGroupShowMap = chart._isGroupShowMap = {};
-			var counter = 0;
-			for ( var stringID in map) {
-				if (++counter > 10)
-					break;
-				isGroupShowMap[stringID] = true;
+		var groupShowBIT;
+		if (!chart._groupShowBIT) {
+			groupShowBIT = chart._groupShowBIT = new BITree(chart.stringMapSize);
+			var counter = Math.min(10, chart.stringMapSize);
+			for (var stringID = 1; stringID <= 10; stringID++) {
+				groupShowBIT.update(stringID, 1);
 			}
 		} else {
-			isGroupShowMap = chart._isGroupShowMap;
+			groupShowBIT = chart._groupShowBIT;
 		}
+		// if (!chart._isGroupShowMap) {
+		// isGroupShowMap = chart._isGroupShowMap = [];
+		// var counter = 0;
+		// for (var stringID in map) {
+		// if (++counter > 10)
+		// break;
+		// isGroupShowMap[stringID] = true;
+		// }
+		// } else {
+		// isGroupShowMap = chart._isGroupShowMap;
+		// }
 		var barWidth = 1.0 / (rawSeries.length + 1);
 		var groupWidth = 1.0 - barWidth;
 		var showSeries = [];
@@ -292,6 +340,7 @@ function ChartGeneration($) {
 		var rawX2GroupIdMap = {};
 		var groupId2RawXMap = {};
 		var groups = 0;
+		var nextGroupID = 0;
 		for (var i = 0; i < rawSeries.length; i++) {
 			var seriesItem = rawSeries[i];
 			if (!seriesItem._showBars)
@@ -308,12 +357,17 @@ function ChartGeneration($) {
 			for (var j = 0; j < seriesItem.data.length; j++) {
 				var rawPoint = seriesItem.data[j];
 				var rawX = rawPoint[0];
-				if (isGroupShowMap[rawX] !== true)
+				// if (isGroupShowMap[rawX] !== true)
+				// continue;
+				if (!groupShowBIT.get(rawX))
 					continue;
 				var groupID;
 				if (rawX2GroupIdMap[rawX] === undefined) {
-					groupID = rawX2GroupIdMap[rawX] = ++groups;
-					groupId2RawXMap[groups] = rawX;
+					// groupID = rawX2GroupIdMap[rawX] = ++groups;
+					groupID = groupShowBIT.getSum(rawX);
+					groupId2RawXMap[groupID] = rawX;
+					rawX2GroupIdMap[rawX] = groupID;
+					++groups;
 				} else {
 					groupID = rawX2GroupIdMap[rawX];
 				}
@@ -459,11 +513,7 @@ function ChartGeneration($) {
 					var newTick = map[num];
 					if (!newTick)
 						return "";
-					var result = "<div class='category_tick'>";
-					for (var i = 0; i < newTick.length; i++) {
-						result + newTick[i] + "<br/>";
-					}
-					return result + "</div>";
+					return "<div class='category_tick'>" + newTick + "</div>";
 				}
 			}
 			options.series.bars = {
@@ -487,7 +537,7 @@ function ChartGeneration($) {
 				max : options.xaxis.max,
 				minTickSize : 1,
 				tickSize : 1,
-				tickLength : 10,
+				tickLength : 0,
 				tickFormatter : function(num, _) {
 					var newTick = chart.stringMap[chart._groupId2RawXMap[num]];
 					if (!newTick)

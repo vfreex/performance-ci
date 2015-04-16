@@ -148,7 +148,7 @@ public class StopMonitorsBuilder extends Builder {
 						logWritter.println("INFO: Stopping monitor '"
 								+ monitor.getClass().getName() + "'...");
 						if (!monitor.stop(projectName, buildID, workspace,
-								listener)) {
+								logWritter)) {
 							LOGGER.warning("Something goes wrong when trying stopping Monitor '"
 									+ monitor.getClass().getName() + "'.");
 							logWritter
@@ -184,7 +184,6 @@ public class StopMonitorsBuilder extends Builder {
 				}
 			} finally {
 				logWritter.flush();
-				logWritter.close();
 			}
 		}
 

@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -154,15 +155,15 @@ public class ZabbixMonitor implements ResourceMonitor,
 
 	@Override
 	public boolean start(String projectName, String buildID, String workspace,
-			BuildListener listener) throws Exception {
+			PrintStream listener) throws Exception {
 		String apiVersion = getAPIVersion();
-		listener.getLogger().println("INFO: Zabbix API version: " + apiVersion);
+		listener.println("INFO: Zabbix API version: " + apiVersion);
 		String auth = null;
-		listener.getLogger().println("INFO: Logging in...");
+		listener.println("INFO: Logging in...");
 		try {
 			auth = authenticate();
 		} catch (Exception ex) {
-			listener.getLogger().println(
+			listener.println(
 					"ERROR: Authentication Failed." + ex.toString());
 			return false;
 		}
@@ -171,14 +172,14 @@ public class ZabbixMonitor implements ResourceMonitor,
 				for (int i = 1; i <= MAX_TRIES; i++) {
 					LOGGER.info("Starting Zabbix monitor... (try " + i + " of "
 							+ MAX_TRIES + ")");
-					listener.getLogger().println(
+					listener.println(
 							"INFO: Starting Zabbix monitor... (try " + i
 									+ " of " + MAX_TRIES + ")");
 					if (tryStart(projectName, buildID, workspace, listener,
 							auth)) {
 						logout(auth);
 						LOGGER.info("INFO: Zabbix monitor started.");
-						listener.getLogger().println(
+						listener.println(
 								"INFO: Zabbix monitor started.");
 						startTime = new Date();
 						return true;
@@ -186,13 +187,13 @@ public class ZabbixMonitor implements ResourceMonitor,
 				}
 			} catch (Exception ex) {
 				LOGGER.warning("Fail to start Zabbix monitor: " + ex.toString());
-				listener.getLogger()
+				listener
 						.println(
 								"ERROR: Fail to start Zabbix monitor: "
 										+ ex.toString());
 			}
 			LOGGER.warning("Cannot start Zabbix monitor. Give up.");
-			listener.getLogger().println(
+			listener.println(
 					"WARNING: Cannot start Zabbix monitor. Give up.");
 			logout(auth);
 			return false;
@@ -204,15 +205,15 @@ public class ZabbixMonitor implements ResourceMonitor,
 
 	@Override
 	public boolean stop(String projectName, String buildID, String workspace,
-			BuildListener listener) throws Exception {
+			PrintStream listener) throws Exception {
 		String apiVersion = getAPIVersion();
-		listener.getLogger().println("INFO: Zabbix API version: " + apiVersion);
+		listener.println("INFO: Zabbix API version: " + apiVersion);
 		String auth = null;
-		listener.getLogger().println("INFO: Logging in...");
+		listener.println("INFO: Logging in...");
 		try {
 			auth = authenticate();
 		} catch (Exception ex) {
-			listener.getLogger().println(
+			listener.println(
 					"ERROR: Authentication Failed." + ex.toString());
 			return false;
 		}
@@ -221,18 +222,18 @@ public class ZabbixMonitor implements ResourceMonitor,
 				for (int i = 1; i <= MAX_TRIES; i++) {
 					LOGGER.info("Stopping Zabbix monitor... (try " + i + " of "
 							+ MAX_TRIES + ")");
-					listener.getLogger().println(
+					listener.println(
 							"INFO: Stopping Zabbix monitor... (try " + i
 									+ " of " + MAX_TRIES + ")");
 					if (tryStop(projectName, buildID, workspace, listener, auth)) {
 						logout(auth);
 						endTime = new Date();
 						LOGGER.info("INFO: Zabbix monitor stopped.");
-						listener.getLogger().println(
+						listener.println(
 								"INFO: Zabbix monitor stopped.");
 						if (!downloadData(projectName, buildID, workspace,
 								listener)) {
-							listener.getLogger()
+							listener
 									.println(
 											"ERROR: Fail to download data from Zabbix server.");
 							return false;
@@ -242,11 +243,11 @@ public class ZabbixMonitor implements ResourceMonitor,
 				}
 			} catch (Exception ex) {
 				LOGGER.warning("Fail to stop Zabbix monitor: " + ex.toString());
-				listener.getLogger().println(
+				listener.println(
 						"ERROR: Fail to stop Zabbix monitor: " + ex.toString());
 			}
 			LOGGER.warning("Cannot stop Zabbix monitor. Give up.");
-			listener.getLogger().println(
+			listener.println(
 					"WARNING: Cannot stop Zabbix monitor. Give up.");
 			logout(auth);
 			return false;
@@ -254,74 +255,60 @@ public class ZabbixMonitor implements ResourceMonitor,
 		logout(auth);
 		endTime = new Date();
 		if (!downloadData(projectName, buildID, workspace, listener)) {
-			listener.getLogger().println(
+			listener.println(
 					"ERROR: Fail to download data from Zabbix server.");
 			return false;
 		}
 		return true;
 	}
 
-	@Override
-	public boolean start(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) throws Exception {
-		return start(build.getProject().getName(), build.getId(), build
-				.getWorkspace().getRemote(), listener);
-	}
-
 	private boolean tryStart(String projectName, String buildID,
-			String workspace, BuildListener listener, String auth)
+			String workspace, PrintStream listener, String auth)
 			throws Exception {
-		listener.getLogger().println(
+		listener.println(
 				"INFO: Geting host IDs for \"" + hosts + "\"...");
 		Collection<Integer> hostIDs = getHostIDs(auth);
 		if (hostIDs.isEmpty()) {
-			listener.getLogger().println("WARNING: No valid hosts found.");
+			listener.println("WARNING: No valid hosts found.");
 			throw new InvalidParameterException("No valid hosts found.");
 		}
 		try {
-			listener.getLogger().println("INFO: Setting host status to 0...");
+			listener.println("INFO: Setting host status to 0...");
 			setHostStatus(hostIDs, 0, auth);
-			listener.getLogger()
+			listener
 					.println("INFO: Start monitoring successfully.");
 			return true;
 		} catch (Exception e) {
-			listener.getLogger().println("WARNING: Cannot start monitoring.");
-			listener.getLogger().println(e.toString());
+			listener.println("WARNING: Cannot start monitoring.");
+			listener.println(e.toString());
 			return false;
 		}
 	}
 
 	public boolean tryStop(String projectName, String buildID,
-			String workspace, BuildListener listener, String auth)
+			String workspace, PrintStream listener, String auth)
 			throws Exception {
-		listener.getLogger().println(
+		listener.println(
 				"INFO: Geting host IDs for \"" + hosts + "\"...");
 		Collection<Integer> hostIDs = getHostIDs(auth);
 		if (hostIDs.isEmpty()) {
-			listener.getLogger().println("WARNING: No valid hosts found.");
+			listener.println("WARNING: No valid hosts found.");
 			throw new InvalidParameterException("No valid hosts found.");
 		}
 		try {
-			listener.getLogger().println("INFO: Setting host status to 1...");
+			listener.println("INFO: Setting host status to 1...");
 			setHostStatus(hostIDs, 1, auth);
-			listener.getLogger().println("INFO: Stop monitoring successfully.");
+			listener.println("INFO: Stop monitoring successfully.");
 			return true;
 		} catch (Exception e) {
-			listener.getLogger().println("WARNING: Cannot stop monitoring.");
-			listener.getLogger().println(e.toString());
+			listener.println("WARNING: Cannot stop monitoring.");
+			listener.println(e.toString());
 			return false;
 		}
 	}
 
-	@Override
-	public boolean stop(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) throws Exception {
-		return start(build.getProject().getName(), build.getId(), build
-				.getWorkspace().getRemote(), listener);
-	}
-
 	private boolean downloadData(String projectName, String buildID,
-			String workspace, BuildListener listener) throws IOException,
+			String workspace, PrintStream listener) throws IOException,
 			InterruptedException {
 		PerfchartsRecorder.DescriptorImpl desc = (PerfchartsRecorder.DescriptorImpl) Jenkins
 				.getInstance().getDescriptor(PerfchartsRecorder.class);
@@ -337,9 +324,9 @@ public class ZabbixMonitor implements ResourceMonitor,
 		String pathOnAgent = relativePath.startsWith("/")
 				|| relativePath.startsWith("file:") ? relativePath : workspace
 				+ File.separator + relativePath;
-		LOGGER.info("Copy NMON logs to Jenkins agent '" + pathOnAgent + "'...");
-		listener.getLogger().println(
-				"INFO: Copy NMON logs to Jenkins agent '" + pathOnAgent
+		LOGGER.info("Copy Zabbix logs to Jenkins agent '" + pathOnAgent + "'...");
+		listener.println(
+				"INFO: Copy Zabbix logs to Jenkins agent '" + pathOnAgent
 						+ "'...");
 		new File(pathOnAgent).mkdirs();
 
@@ -360,7 +347,7 @@ public class ZabbixMonitor implements ResourceMonitor,
 
 		arguments.add(pathOnAgent);
 		ProcessBuilder cgtProcessBuilder = new ProcessBuilder(arguments);
-		listener.getLogger().println(
+		listener.println(
 				"INFO: Downloading monitoring data from Zabbix server '"
 						+ apiUrl + "'...");
 		Process cgtProcess = cgtProcessBuilder.start();
@@ -373,7 +360,7 @@ public class ZabbixMonitor implements ResourceMonitor,
 				cgtProcess.getErrorStream()));
 		String line;
 		while ((line = reader.readLine()) != null) {
-			listener.getLogger().println(line);
+			listener.println(line);
 		}
 		int returnCode = cgtProcess.waitFor();
 		boolean success = returnCode == 0;

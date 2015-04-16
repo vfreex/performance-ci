@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.perfci.monitoring;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.List;
 
@@ -14,17 +15,10 @@ import hudson.model.Descriptor;
 import hudson.remoting.Callable;
 
 public interface ResourceMonitor extends Describable<ResourceMonitor>, Serializable {
-	@Deprecated
-	boolean start(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) throws Exception;
-
-	boolean start(String projectName, String buildID, String workspace, BuildListener listener)
+	boolean start(String projectName, String buildID, String workspace, PrintStream listener)
 			throws Exception;
-	@Deprecated
-	boolean stop(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) throws Exception;
 
-	boolean stop(String projectName, String buildID, String workspace, BuildListener listener)
+	boolean stop(String projectName, String buildID, String workspace, PrintStream listener)
 			throws Exception;
 	
 	void checkRoles(RoleChecker checker, Callable<?, ? extends SecurityException> callable) throws SecurityException;
