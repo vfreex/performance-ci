@@ -219,7 +219,7 @@ function ChartGeneration($) {
 			// display it
 			var stringValue = chart.stringMap[stringID];
 			var $group_list_item = $(
-					"<li style='display:inline-block; width:20%;word-wrap: break-word;'/>")
+					"<li class='chart_bar_group_item'/>")
 					.appendTo($group_list);
 			var $item_content = $("<label/>").appendTo($group_list_item);
 			var $cb = $(

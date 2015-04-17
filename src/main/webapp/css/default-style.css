@@ -100,6 +100,13 @@ header, #content, footer {
 	text-decoration: line-through;
 }
 
+.chart_bar_group_item {
+	display: inline-block;
+	width: 20%;
+	font-size: 0.8em;
+	word-break: break-all
+}
+
 .chart_table {
 	border: 2px solid;
 	border-collapse: collapse;
