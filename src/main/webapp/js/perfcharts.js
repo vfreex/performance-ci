@@ -775,18 +775,20 @@ function ChartGeneration($) {
 		var $rootList = $("<dl/>").appendTo($control_pad);
 		var indexOfSeries = 0;
 		for (var i = 0; i < reports.length; ++i) {
-			var report = reports[i];
-			$("<dt/>").text(report.title).appendTo($rootList);
+                        var report = reports[i];
+                        $("<dt/>").text(report.title).appendTo($rootList);
 			var charts = report.charts;
 			for (var j = 0; j < charts.length; ++j) {
 				var chart = charts[j];
-				if (chart.xaxisMode === "CATEGORIES")
+				if (chart.xaxisMode === "CATEGORIES" || chart.xaxisMode === "BAR_STRING")
 					continue;
 				if (chart.xaxisMode === "INTEGER")
 					ChartGeneration.compositeReport.xaxisMode = null;
 				var $chartList = $("<dl/>");
-				$("<dd/>").append($chartList).appendTo($rootList);
-				$("<dt/>").text(chart.title).appendTo($chartList);
+                                if (chart.title === "Summary" || chart.title === "Performance Comparison")
+				        chart.title ="";
+                                $("<dd/>").append($chartList).appendTo($rootList);
+                                $("<dt/>").text(chart.title).appendTo($chartList);
 				var series = chart.series;
 				if (!series)
 					continue;
