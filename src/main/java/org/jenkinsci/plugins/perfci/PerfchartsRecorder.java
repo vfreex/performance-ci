@@ -115,8 +115,9 @@ public class PerfchartsRecorder extends Recorder {
 	public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws IOException, InterruptedException {
 		if (build.getResult() != Result.SUCCESS){
+			// whenever the build failed or aborted, generate the performance report
 			LOGGER.warning("build.getResult(): " + build.getResult().toString()); 
-			return false;
+			//return false;
 		}
 		DescriptorImpl desc = getDescriptor();
 		TimeZone tz = timeZone != null && !timeZone.isEmpty() ? TimeZone
