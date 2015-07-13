@@ -112,7 +112,7 @@ public class PerfchartsBuildAction implements Action {
 		}
 		JSONArray builds = new JSONArray();
 		for (AbstractBuild<?, ?> buildItem : build.getProject().getBuilds()) {
-			if (buildItem.number >= build.number || buildItem.getResult().isWorseThan(Result.SUCCESS))
+			if (buildItem.number >= build.number/* || buildItem.getResult().isWorseThan(Result.SUCCESS)*/)
 				continue;
 			JSONObject buildItemJSON = new JSONObject();
 			buildItemJSON.put("value", buildItem.number);
