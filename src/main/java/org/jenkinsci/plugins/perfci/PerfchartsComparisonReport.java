@@ -169,15 +169,15 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 			throws IOException {
 		response.setContentType("text/json");
 		JSONObject result = new JSONObject();
-		if (sourceBuild.getResult().isWorseThan(Result.SUCCESS))
+		/*if (sourceBuild.getResult().isWorseThan(Result.SUCCESS))
 		{
 			result.put("error", 1);
 			result.put("errorMessage", "This is an unsuccessful build.");
 			return;
-		}
+		}*/
 		JSONArray builds = new JSONArray();
 		for (AbstractBuild<?, ?> buildItem : sourceBuild.getProject().getBuilds()) {
-			if (buildItem.number >= sourceBuild.number || buildItem.getResult().isWorseThan(Result.SUCCESS))
+			if (buildItem.number >= sourceBuild.number /*|| buildItem.getResult().isWorseThan(Result.SUCCESS)*/)
 				continue;
 			JSONObject buildItemJSON = new JSONObject();
 			buildItemJSON.put("value", buildItem.number);
