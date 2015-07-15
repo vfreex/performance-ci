@@ -64,16 +64,16 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 		}
 		writer.write("SOURCE,"
 				+ sourceBuild.number
-				+ ",build "
-				+ sourceBuild.number
+				+ ","
+				+ sourceBuild.getDisplayName()
 				+ ","
 				+ IOHelpers.concatPathParts(sourceBuildPath,
 						Constants.OUTPUT_DIR_RELATIVE_PATH,
 						"tmp/subreports/Performance.json") + "\n");
 		writer.write("DEST,"
 				+ destBuild.number
-				+ ",build "
-				+ destBuild.number
+				+ ","
+				+ destBuild.getDisplayName()
 				+ ","
 				+ IOHelpers.concatPathParts(destBuildPath,
 						Constants.OUTPUT_DIR_RELATIVE_PATH,
@@ -108,7 +108,7 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 		String inputPath = IOHelpers.concatPathParts(sourceBuildPath,
 				Constants.CMP_DIR_RELATIVE_PATH,
 				Integer.toString(destBuild.number));
-                String inputFilePath = IOHelpers.concatPathParts(inputPath,inputFileName);
+                String inputFilePath = IOHelpers.concatPathParts(inputPath, inputFileName);
 		String outputPath = IOHelpers.concatPathParts(inputPath, "report");
 		String dataFilePath = IOHelpers.concatPathParts(outputPath, "tmp",
 				"data.js");

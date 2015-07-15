@@ -104,12 +104,12 @@ public class PerfchartsBuildAction implements Action {
 			throws IOException {
 		response.setContentType("text/json");
 		JSONObject result = new JSONObject();
-		if (build.getResult().isWorseThan(Result.SUCCESS))
+		/*if (build.getResult().isWorseThan(Result.SUCCESS))
 		{
 			result.put("error", 1);
 			result.put("errorMessage", "This is an unsuccessful build.");
 			return;
-		}
+		}*/
 		JSONArray builds = new JSONArray();
 		for (AbstractBuild<?, ?> buildItem : build.getProject().getBuilds()) {
 			if (buildItem.number >= build.number/* || buildItem.getResult().isWorseThan(Result.SUCCESS)*/)
@@ -117,7 +117,7 @@ public class PerfchartsBuildAction implements Action {
 			JSONObject buildItemJSON = new JSONObject();
 			buildItemJSON.put("value", buildItem.number);
 			buildItemJSON.put("text", "#" + buildItem.number + " - "
-					+ buildItem.getId());
+					+ buildItem.getDisplayName());
 			builds.add(buildItemJSON);
 		}
 		result.put("error", 0);
