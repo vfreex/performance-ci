@@ -3,6 +3,7 @@ package org.jenkinsci.plugins.perfci;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Result;
+import hudson.model.Action;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -38,12 +39,19 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 	private void buildReport() throws IOException, InterruptedException {
 		String sourceBuildPath = sourceBuild.getRootDir().getAbsolutePath();
 		String destBuildPath = destBuild.getRootDir().getAbsolutePath();
+		// get the displayname, all the report will show the display name. If it is not setted, will show build_id (the default display name)
+		String sourceDisplayName = sourceBuild.getDisplayName();
+		String destDisplayName = destBuild.getDisplayName();
+                System.out.println("sourceDisplayName is " + sourceDisplayName);
+		System.out.println("destDisplayName is " + destDisplayName);
 		String inputPath = IOHelpers.concatPathParts(sourceBuildPath,
 				Constants.CMP_DIR_RELATIVE_PATH,
 				Integer.toString(destBuild.number));
-		new File(inputPath).mkdirs();
-		String inputFileName = "Perf-build" + sourceBuild.number + "_vs_"
-				+ destBuild.number + ".perfcmp";
+	        new File(inputPath).mkdirs();
+		// will clean the rawdata dir first
+                IOHelpers.cleanInputPath(inputPath);
+	        String inputFileName = "Perf-build " + sourceDisplayName + "_vs_"
+				+ destDisplayName + ".perfcmp";
 		String inputFilePath = IOHelpers.concatPathParts(inputPath,
 				inputFileName);
 		File inputFile = new File(inputFilePath);
@@ -91,15 +99,23 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 			throws Exception {
 		response.setContentType("text/javascript");
 		String sourceBuildPath = sourceBuild.getRootDir().getAbsolutePath();
-		// String destBuildPath = destBuild.getRootDir().getAbsolutePath();
+		//get the display name of build
+		String sourceDisplayName = sourceBuild.getDisplayName();
+		String destDisplayName = destBuild.getDisplayName();
+                String inputFileName = "Perf-build " +sourceDisplayName + "_vs_"
+                                + destDisplayName + ".perfcmp";
+		//locate the perf-build*.perfcmp
 		String inputPath = IOHelpers.concatPathParts(sourceBuildPath,
 				Constants.CMP_DIR_RELATIVE_PATH,
 				Integer.toString(destBuild.number));
+                String inputFilePath = IOHelpers.concatPathParts(inputPath,inputFileName);
 		String outputPath = IOHelpers.concatPathParts(inputPath, "report");
 		String dataFilePath = IOHelpers.concatPathParts(outputPath, "tmp",
 				"data.js");
+		File inputFile = new File(inputFilePath);
 		File dataFile = new File(dataFilePath);
-		if (!dataFile.exists()) {
+		// if the *.perfcmp does not exist, will rerun buildReport()
+		if (!dataFile.exists() | !inputFile.exists()) {
 			buildReport();
 		}
 		IOHelpers.copySteam(new FileInputStream(dataFile),
@@ -132,7 +148,7 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 		JSONObject result = new JSONObject();
 		response.setContentType("text/json");
 		try {
-			buildReport();
+		buildReport();
 		} catch (Exception e) {
 			result.put("error", 1);
 			result.put("errorMessage", "Fail to generate trend report.");

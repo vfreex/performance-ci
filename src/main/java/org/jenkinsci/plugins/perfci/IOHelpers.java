@@ -144,5 +144,18 @@ public class IOHelpers {
 		}
 		return localFiles;
 	}
+                public static void cleanInputPath(String inputPath) {
+                File inputDir = new File(inputPath);
+                if (inputDir.isDirectory()) {
+                        File[] children = inputDir.listFiles();
+                        for (int i=0;i<children.length;i++)
+                        {
+                                if (children[i].isFile())
+                                        children[i].delete();
+
+                        }
+                }
+        }
+
 
 }
