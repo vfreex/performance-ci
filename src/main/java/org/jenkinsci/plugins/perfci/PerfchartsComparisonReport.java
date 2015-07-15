@@ -166,7 +166,7 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
 			JSONObject buildItemJSON = new JSONObject();
 			buildItemJSON.put("value", buildItem.number);
 			buildItemJSON.put("text", "#" + buildItem.number + " - "
-					+ buildItem.getId());
+					+ buildItem.getDisplayName());
 			builds.add(buildItemJSON);
 		}
 		result.put("error", 0);
