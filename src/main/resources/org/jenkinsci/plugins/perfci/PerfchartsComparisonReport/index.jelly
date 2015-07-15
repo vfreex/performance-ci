@@ -46,8 +46,8 @@
 			<div id="report_container">
 				<div>
 					[<a href="monoReport" target="_blank">open in a separated page</a>]
-					[<a href="../../" target="_blank">this build</a>]
-					[<a href="../../../../${it.destBuild.number}/detailedReport" target="_blank">compared build</a>]
+					[<a href="../../" target="_blank">${it.sourceBuild.getDisplayName()}</a>]
+					[<a href="../../../../${it.destBuild.number}/detailedReport" target="_blank">${it.destBuild.getDisplayName()}</a>]
 					<fieldset>
 						<label for="sel_build">Compare with</label>
 						<select id="sel_build">
