@@ -5,4 +5,4 @@ testcode/
 /build_dir/
 /bin/
 *.iml
-
+/.idea/
