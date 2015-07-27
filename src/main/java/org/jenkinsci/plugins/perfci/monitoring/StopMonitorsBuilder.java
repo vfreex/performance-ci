@@ -2,10 +2,7 @@ package org.jenkinsci.plugins.perfci.monitoring;
 
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.BuildListener;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.ParametersAction;
+import hudson.model.*;
 import hudson.remoting.Callable;
 import hudson.remoting.RemoteOutputStream;
 import hudson.tasks.BuildStepDescriptor;
@@ -41,21 +38,25 @@ public class StopMonitorsBuilder extends Builder {
 			BuildListener listener) {
 		ParametersAction paraAction = build.getAction(ParametersAction.class);
 		if (paraAction == null) {
-			listener.getLogger().println("ERROR: No monitors to stop.");
-			return false;
+			listener.getLogger().println("WARNING: No monitors to stop.");
+			return true;
 		}
+        BooleanParameterValue isAllMonitorsDisabledParam = (BooleanParameterValue)paraAction.getParameter("isAllMonitorsDisabled");
+        if (isAllMonitorsDisabledParam != null && isAllMonitorsDisabledParam.getValue()) {
+            listener.getLogger().println("WARNING: PerfCI won't stop any monitor according to your configuration.");
+            return true;
+        }
 		ResourceMonitor.ResourceMonitorParameterValue para = (ResourceMonitor.ResourceMonitorParameterValue) paraAction
 				.getParameter("monitors");
-		if (para == null) {
-			listener.getLogger().println("ERROR: No monitors to stop.");
-			return false;
+		if (para == null || para.getMonitors() == null || para.getMonitors().isEmpty()) {
+			listener.getLogger().println("WARNING: No monitors to stop.");
+			return true;
 		}
-		List<ResourceMonitor> monitors = para.getMonitors();
 		try {
 			Boolean r = launcher.getChannel().call(
 					new StopMonitorsCallable(build.getProject().getName(),
 							build.getId(), build.getWorkspace().getRemote(),
-							monitors, listener));
+                            para.getMonitors(), listener));
 			return r != null && r.booleanValue();
 		} catch (Exception e) {
 			RuntimeException re = new RuntimeException();
@@ -142,6 +143,11 @@ public class StopMonitorsBuilder extends Builder {
 			try {
 				int stoppedMonitors = 0;
 				for (ResourceMonitor monitor : monitors) {
+                    if (!monitor.isEnabled()) {
+                        LOGGER.info("WARNING: PerfCI will not stop monitor (" + monitor.toString() + ") according to your configuration.");
+                        logWritter.println("WARNING: PerfCI will not stop monitor (" + monitor.toString() + ") according to your configuration.");
+                        return true;
+                    }
 					try {
 						LOGGER.info("Stopping monitor '"
 								+ monitor.getClass().getName() + "'...");

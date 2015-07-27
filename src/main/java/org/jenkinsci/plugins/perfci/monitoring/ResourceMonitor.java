@@ -20,15 +20,17 @@ public interface ResourceMonitor extends Describable<ResourceMonitor>, Serializa
 
 	boolean stop(String projectName, String buildID, String workspace, PrintStream listener)
 			throws Exception;
+
+	boolean isEnabled();
 	
 	void checkRoles(RoleChecker checker, Callable<?, ? extends SecurityException> callable) throws SecurityException;
 
-	abstract static class ResourceMonitorDescriptor extends
+	abstract class ResourceMonitorDescriptor extends
 			Descriptor<ResourceMonitor> {
 
 	}
 
-	public static class ResourceMonitorParameterValue extends ParameterValue {
+	class ResourceMonitorParameterValue extends ParameterValue {
 		/**
 		 * 
 		 */
