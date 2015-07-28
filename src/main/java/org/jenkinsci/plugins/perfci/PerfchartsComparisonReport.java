@@ -40,8 +40,8 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
         new File(inputPath).mkdirs();
         // will clean the rawdata dir first
         IOHelpers.cleanInputPath(inputPath);
-        String inputFileName = "Perf-build " + sourceDisplayName + "_vs_"
-                + destDisplayName + ".perfcmp";
+        String inputFileName = "Perf-build_" + sourceBuild.number + "_vs_"
+                + destBuild.number + ".perfcmp";
         String inputFilePath = IOHelpers.concatPathParts(inputPath,
                 inputFileName);
         File inputFile = new File(inputFilePath);
