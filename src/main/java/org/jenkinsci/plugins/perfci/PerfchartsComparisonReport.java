@@ -46,33 +46,26 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
                 inputFileName);
         File inputFile = new File(inputFilePath);
         BufferedWriter writer = null;
-        try {
-            writer = new BufferedWriter(new OutputStreamWriter(
-                    new FileOutputStream(inputFile)));
-            writer.write("SOURCE,"
-                    + sourceBuild.number
-                    + ","
-                    + sourceBuild.getDisplayName()
-                    + ","
-                    + IOHelpers.concatPathParts(sourceBuildPath,
-                    Constants.OUTPUT_DIR_RELATIVE_PATH,
-                    "tmp/subreports/Performance.json") + "\n");
-            writer.write("DEST,"
-                    + destBuild.number
-                    + ","
-                    + destBuild.getDisplayName()
-                    + ","
-                    + IOHelpers.concatPathParts(destBuildPath,
-                    Constants.OUTPUT_DIR_RELATIVE_PATH,
-                    "tmp/subreports/Performance.json") + "\n");
-            writer.flush();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } finally {
-            if (writer != null)
-                writer.close();
-        }
-
+        writer = new BufferedWriter(new OutputStreamWriter(
+                new FileOutputStream(inputFile)));
+        writer.write("SOURCE,"
+                + sourceBuild.number
+                + ","
+                + sourceBuild.getDisplayName()
+                + ","
+                + IOHelpers.concatPathParts(sourceBuildPath,
+                Constants.OUTPUT_DIR_RELATIVE_PATH,
+                "tmp/subreports/Performance.json") + "\n");
+        writer.write("DEST,"
+                + destBuild.number
+                + ","
+                + destBuild.getDisplayName()
+                + ","
+                + IOHelpers.concatPathParts(destBuildPath,
+                Constants.OUTPUT_DIR_RELATIVE_PATH,
+                "tmp/subreports/Performance.json") + "\n");
+        writer.flush();
+        writer.close();
         PerfchartsRecorder.DescriptorImpl desc = (PerfchartsRecorder.DescriptorImpl) Jenkins
                 .getInstance().getDescriptor(PerfchartsRecorder.class);
         String outputPath = IOHelpers.concatPathParts(inputPath, "report");
@@ -94,8 +87,8 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
         //get the display name of build
         String sourceDisplayName = sourceBuild.getDisplayName();
         String destDisplayName = destBuild.getDisplayName();
-        String inputFileName = "Perf-build " + sourceDisplayName + "_vs_"
-                + destDisplayName + ".perfcmp";
+        String inputFileName = "build" + sourceBuild.number + "_vs_"
+                + destBuild.number + ".perfcmp";
         //locate the perf-build*.perfcmp
         String inputPath = IOHelpers.concatPathParts(sourceBuildPath,
                 Constants.CMP_DIR_RELATIVE_PATH,
@@ -143,8 +136,9 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
             buildReport();
         } catch (Exception e) {
             result.put("error", 1);
-            result.put("errorMessage", "Fail to generate trend report.");
+            result.put("errorMessage", "Fail to generate trend report." + e.toString());
             writeJSON(response, result);
+            e.printStackTrace();
             return;
         }
         result.put("error", 0);
@@ -162,7 +156,7 @@ public class PerfchartsComparisonReport extends PerfchartsReport {
         response.setContentType("text/json");
         JSONObject result = new JSONObject();
         /*if (sourceBuild.getResult().isWorseThan(Result.SUCCESS))
-		{
+        {
 			result.put("error", 1);
 			result.put("errorMessage", "This is an unsuccessful build.");
 			return;
