@@ -561,13 +561,19 @@ function ChartGeneration($) {
 				minTickSize : 1,
 				tickSize : 1
 			}
-			if (chart.xaxisTicks) {
-				options.xaxis.ticks = chart.xaxisTicks;
-			} else {
-				options.xaxis.tickFormatter = function(num, _) {
-					return Math.round(num);
-				};
-			}
+			options.xaxis.tickFormatter = function(num, _) {
+            	var rawTick = Math.round(num);
+            	if (!chart.xaxisTicks)
+            		return rawTick;
+            	if (!chart.stringMap) {
+            		chart.stringMap = {};
+            		for (var i = 0; i < chart.xaxisTicks.length; ++i) {
+            			chart.stringMap[chart.xaxisTicks[i][0]] = chart.xaxisTicks[i][1];
+            		}
+            	}
+            	var newTick = chart.stringMap[rawTick];
+                return newTick ? "<div class='category_tick'>" + newTick + "</div>" : "";
+            };
 			break;
 		default:
 			break;
@@ -775,20 +781,18 @@ function ChartGeneration($) {
 		var $rootList = $("<dl/>").appendTo($control_pad);
 		var indexOfSeries = 0;
 		for (var i = 0; i < reports.length; ++i) {
-                        var report = reports[i];
-                        $("<dt/>").text(report.title).appendTo($rootList);
+			var report = reports[i];
+			$("<dt/>").text(report.title).appendTo($rootList);
 			var charts = report.charts;
 			for (var j = 0; j < charts.length; ++j) {
 				var chart = charts[j];
-				if (chart.xaxisMode === "CATEGORIES" || chart.xaxisMode === "BAR_STRING")
+				if (chart.xaxisMode === "CATEGORIES")
 					continue;
 				if (chart.xaxisMode === "INTEGER")
 					ChartGeneration.compositeReport.xaxisMode = null;
 				var $chartList = $("<dl/>");
-                                if (chart.title === "Summary" || chart.title === "Performance Comparison")
-				        chart.title ="";
-                                $("<dd/>").append($chartList).appendTo($rootList);
-                                $("<dt/>").text(chart.title).appendTo($chartList);
+				$("<dd/>").append($chartList).appendTo($rootList);
+				$("<dt/>").text(chart.title).appendTo($chartList);
 				var series = chart.series;
 				if (!series)
 					continue;
