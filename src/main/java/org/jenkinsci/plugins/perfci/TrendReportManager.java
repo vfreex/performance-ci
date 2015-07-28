@@ -85,7 +85,7 @@ public class TrendReportManager {
 							+ " for trend report generation: Its perf&res report is not found.");
 					continue;
 				}
-				trendInputWriter.write(Integer.toString(build.number));
+				trendInputWriter.write("\"" + build.getDisplayName().replace("\"", "\"\"") + "\"");
 				trendInputWriter.write(",");
 				trendInputWriter.write(perfDataPath);
 				trendInputWriter.write("\n");
