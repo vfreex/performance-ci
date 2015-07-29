@@ -97,17 +97,26 @@ public class PerfchartsRecorder extends Recorder {
 
 	private String inputPattern;
 	private String timeZone;
+	//add startOffset & testDuration setting 
+	private String startOffset;
+	private String testDuration;
+	/*
 	private String fromTime;
 	private String toTime;
+	*/
 	private String excludedTransactionPattern;
 
 	@DataBoundConstructor
-	public PerfchartsRecorder(String inputPattern, String timeZone,
-			String fromTime, String toTime, String excludedTransactionPattern) {
+	public PerfchartsRecorder(String inputPattern, String timeZone, String startOffset,
+			String testDuration, /*String fromTime, String toTime,*/ String excludedTransactionPattern) {
 		this.inputPattern = inputPattern;
 		this.timeZone = timeZone;
+		/* Instead of the setting for StartOffset & TestDuration
 		this.fromTime = fromTime;
 		this.toTime = toTime;
+		*/
+		this.startOffset = startOffset;
+		this.testDuration = testDuration;
 		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
@@ -146,9 +155,10 @@ public class PerfchartsRecorder extends Recorder {
 				Constants.OUTPUT_DIR_RELATIVE_PATH);
 		String monoReportFile = IOHelpers.concatPathParts(outputPath,
 				Constants.MONO_REPORT_NAME);
+		//pass startOffset, testDuration to perfcharts 
 		CgtPerfProxy cgtPerf = new CgtPerfProxy(desc.getCgtHome(),
 				desc.getCgtLib(), desc.getCgtLog(), tz, inputPath, outputPath,
-				monoReportFile, fromTime, toTime, excludedTransactionPattern);
+				monoReportFile, startOffset, testDuration,/*fromTime, toTime,*/ excludedTransactionPattern);
 		cgtPerf.setRedirectedOutput(listener.getLogger());
 		if (!cgtPerf.run()) {
 			listener.getLogger().println("Perf&Res report generated failed.");
@@ -195,7 +205,8 @@ public class PerfchartsRecorder extends Recorder {
 	public void setTimeZone(String timeZone) {
 		this.timeZone = timeZone;
 	}
-
+    
+	/*
 	public String getFromTime() {
 		return fromTime;
 	}
@@ -211,13 +222,29 @@ public class PerfchartsRecorder extends Recorder {
 	public void setToTime(String toTime) {
 		this.toTime = toTime;
 	}
-
+     */
 	public String getExcludedTransactionPattern() {
 		return excludedTransactionPattern;
 	}
 
 	public void setExcludedTransactionPattern(String excludedTransactionPattern) {
 		this.excludedTransactionPattern = excludedTransactionPattern;
+	}
+
+	public String getStartOffset() {
+		return startOffset;
+	}
+
+	public void setStartOffset(String startOffset) {
+		this.startOffset = startOffset;
+	}
+
+	public String getTestDuration() {
+		return testDuration;
+	}
+
+	public void setTestDuration(String testDuration) {
+		this.testDuration = testDuration;
 	}
 
 }
