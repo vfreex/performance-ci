@@ -3,15 +3,16 @@ package org.jenkinsci.plugins.perfci;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
-import hudson.model.Action;
-import hudson.model.BuildListener;
-import hudson.model.Result;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
+import hudson.model.*;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
+import hudson.util.FormValidation;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,232 +20,262 @@ import java.util.Collection;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.logging.Logger;
-
-import net.sf.json.JSONObject;
-
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
+import java.util.regex.Pattern;
 
 public class PerfchartsRecorder extends Recorder {
-	private final static String RECORDER_DISPLAY_NAME = "Publish Performance & Resource Monitoring Report";
-	private final static Logger LOGGER = Logger
-			.getLogger(PerfchartsRecorder.class.getName());
+    private final static String RECORDER_DISPLAY_NAME = "Publish Performance & Resource Monitoring Report";
+    private final static Logger LOGGER = Logger
+            .getLogger(PerfchartsRecorder.class.getName());
 
-	@Extension
-	public final static class DescriptorImpl extends
-			BuildStepDescriptor<Publisher> {
-		private String cgtHome;// = System.getenv("CGT_HOME");
-		private String cgtLib;// = System.getenv("CGT_LIB");
-		private String cgtLog;// = System.getenv("CGT_LOG");
-		private String defaultTimeZone;// = TimeZone.getDefault().getID();
+    @Extension
+    public final static class DescriptorImpl extends
+            BuildStepDescriptor<Publisher> {
+        private String cgtHome;// = System.getenv("CGT_HOME");
+        private String cgtLib;// = System.getenv("CGT_LIB");
+        private String cgtLog;// = System.getenv("CGT_LOG");
+        private String defaultTimeZone;// = TimeZone.getDefault().getID();
 
-		public DescriptorImpl() {
-			load();
-		}
+        public DescriptorImpl() {
+            load();
+        }
 
-		@Override
-		public boolean isApplicable(
-				@SuppressWarnings("rawtypes") Class<? extends AbstractProject> jobType) {
-			return true;
-		}
+        @Override
+        public boolean isApplicable(
+                @SuppressWarnings("rawtypes") Class<? extends AbstractProject> jobType) {
+            return true;
+        }
 
-		@Override
-		public String getDisplayName() {
-			return RECORDER_DISPLAY_NAME;
-		}
+        @Override
+        public String getDisplayName() {
+            return RECORDER_DISPLAY_NAME;
+        }
 
-		@Override
-		public boolean configure(StaplerRequest req, JSONObject formData)
-				throws FormException {
-			req.bindJSON(this, formData);
+        @Override
+        public boolean configure(StaplerRequest req, JSONObject formData)
+                throws FormException {
+            req.bindJSON(this, formData);
 
-			save();
-			return super.configure(req, formData);
-		}
+            save();
+            return super.configure(req, formData);
+        }
 
-		public String getCgtHome() {
-			return cgtHome;
-		}
+        public String getCgtHome() {
+            return cgtHome;
+        }
 
-		public void setCgtHome(String cgtHome) {
-			this.cgtHome = cgtHome;
-		}
+        public void setCgtHome(String cgtHome) {
+            this.cgtHome = cgtHome;
+        }
 
-		public String getCgtLib() {
-			return cgtLib;
-		}
+        public String getCgtLib() {
+            return cgtLib;
+        }
 
-		public void setCgtLib(String cgtLib) {
-			this.cgtLib = cgtLib;
-		}
+        public void setCgtLib(String cgtLib) {
+            this.cgtLib = cgtLib;
+        }
 
-		public String getCgtLog() {
-			return cgtLog;
-		}
+        public String getCgtLog() {
+            return cgtLog;
+        }
 
-		public void setCgtLog(String cgtLog) {
-			this.cgtLog = cgtLog;
-		}
+        public void setCgtLog(String cgtLog) {
+            this.cgtLog = cgtLog;
+        }
 
-		public String getDefaultTimeZone() {
-			return defaultTimeZone;
-		}
+        public String getDefaultTimeZone() {
+            return defaultTimeZone;
+        }
 
-		public void setDefaultTimeZone(String defaultTimeZone) {
-			this.defaultTimeZone = defaultTimeZone;
-		}
-	}
+        public void setDefaultTimeZone(String defaultTimeZone) {
+            this.defaultTimeZone = defaultTimeZone;
+        }
 
-	private String inputPattern;
-	private String timeZone;
-	//add startOffset & testDuration setting 
-	private String startOffset;
-	private String testDuration;
-	/*
-	private String fromTime;
-	private String toTime;
-	*/
-	private String excludedTransactionPattern;
+        public FormValidation doCheckStartOffset(@QueryParameter String startOffset) {
+            if (startOffset == null || startOffset.isEmpty()) {
+                return FormValidation.ok();
+            }
+            if (!Pattern.matches("\\d+", startOffset)) {
+                return FormValidation.error("invalid format: must be a non-negative integer");
+            }
+            try {
+                if (Integer.parseInt(startOffset) < 0) {
+                    return FormValidation.error("invalid format: must be a non-negative integer");
+                }
+            } catch (NumberFormatException ex) {
+                return FormValidation.error("invalid format: must be a non-negative integer");
+            }
+            return FormValidation.ok();
+        }
 
-	@DataBoundConstructor
-	public PerfchartsRecorder(String inputPattern, String timeZone, String startOffset,
-			String testDuration, /*String fromTime, String toTime,*/ String excludedTransactionPattern) {
-		this.inputPattern = inputPattern;
-		this.timeZone = timeZone;
-		/* Instead of the setting for StartOffset & TestDuration
-		this.fromTime = fromTime;
+        public FormValidation doCheckTestDuration(@QueryParameter String testDuration) {
+            if (testDuration == null || testDuration.isEmpty()) {
+                return FormValidation.ok();
+            }
+            if (!Pattern.matches("\\d+", testDuration)) {
+                return FormValidation.error("invalid format: must be a non-negative integer");
+            }
+            try {
+                if (Integer.parseInt(testDuration) < 0) {
+                    return FormValidation.error("invalid format: must be a non-negative integer");
+                }
+            } catch (NumberFormatException ex) {
+                return FormValidation.error("invalid format: must be a non-negative integer");
+            }
+            return FormValidation.ok();
+        }
+    }
+
+    private String inputPattern;
+    private String timeZone;
+    //add startOffset & testDuration setting
+    private String startOffset;
+    private String testDuration;
+    /*
+    private String fromTime;
+    private String toTime;
+    */
+    private String excludedTransactionPattern;
+
+    @DataBoundConstructor
+    public PerfchartsRecorder(String inputPattern, String timeZone, String startOffset,
+                              String testDuration, /*String fromTime, String toTime,*/ String excludedTransactionPattern) {
+        this.inputPattern = inputPattern;
+        this.timeZone = timeZone;
+        /* Instead of the setting for StartOffset & TestDuration
+        this.fromTime = fromTime;
 		this.toTime = toTime;
 		*/
-		this.startOffset = startOffset;
-		this.testDuration = testDuration;
-		this.excludedTransactionPattern = excludedTransactionPattern;
-	}
+        this.startOffset = startOffset;
+        this.testDuration = testDuration;
+        this.excludedTransactionPattern = excludedTransactionPattern;
+    }
 
-	@Override
-	public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
-			BuildListener listener) throws IOException, InterruptedException {
-		if (build.getResult() != Result.SUCCESS){
-			// whenever the build failed or aborted, generate the performance report
-			LOGGER.warning("build.getResult(): " + build.getResult().toString()); 
-			//return false;
-		}
-		DescriptorImpl desc = getDescriptor();
-		TimeZone tz = timeZone != null && !timeZone.isEmpty() ? TimeZone
-				.getTimeZone(timeZone)
-				: (desc.getDefaultTimeZone() != null
-						&& !desc.getDefaultTimeZone().isEmpty() ? TimeZone
-						.getTimeZone(desc.getDefaultTimeZone()) : TimeZone
-						.getDefault());
-		FilePath workspace = build.getWorkspace();
-		List<FilePath> remoteFiles = IOHelpers.locateFiles(workspace,
-				inputPattern);
-		if (remoteFiles.isEmpty()) {
-			LOGGER.warning("No test results found.");
-			listener.getLogger().println("WARNING: No test results found.");
-			return false;
-		}
-		LOGGER.info("Copying test results to master...");
-		listener.getLogger().println("INFO: Copying test results to master...");
-		IOHelpers.copyToBuildDir(build, remoteFiles);
-		LOGGER.info("Copying test results complete.");
-		listener.getLogger().println("INFO: Copying test results complete.");
-		String buildPath = build.getRootDir().getAbsolutePath();
-		String inputPath = IOHelpers.concatPathParts(buildPath,
-				Constants.INPUT_DIR_RELATIVE_PATH);
-		String outputPath = IOHelpers.concatPathParts(buildPath,
-				Constants.OUTPUT_DIR_RELATIVE_PATH);
-		String monoReportFile = IOHelpers.concatPathParts(outputPath,
-				Constants.MONO_REPORT_NAME);
-		//pass startOffset, testDuration to perfcharts 
-		CgtPerfProxy cgtPerf = new CgtPerfProxy(desc.getCgtHome(),
-				desc.getCgtLib(), desc.getCgtLog(), tz, inputPath, outputPath,
-				monoReportFile, startOffset, testDuration,/*fromTime, toTime,*/ excludedTransactionPattern);
-		cgtPerf.setRedirectedOutput(listener.getLogger());
-		if (!cgtPerf.run()) {
-			listener.getLogger().println("Perf&Res report generated failed.");
-			LOGGER.severe("SEVERE: Perf&Res report generated failed.");
-			return false;
-		}
-		build.addAction(new PerfchartsBuildAction(build));
-		listener.getLogger().println("INFO: Perf&Res report generated successfully.");
-		LOGGER.info("Perf&Res report generated successfully.");
-		
-		return true;
-	}
+    @Override
+    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
+                           BuildListener listener) throws IOException, InterruptedException {
+        if (build.getResult() != Result.SUCCESS) {
+            // whenever the build failed or aborted, generate the performance report
+            LOGGER.warning("build.getResult(): " + build.getResult().toString());
+            //return false;
+        }
+        DescriptorImpl desc = getDescriptor();
+        TimeZone tz = timeZone != null && !timeZone.isEmpty() ? TimeZone
+                .getTimeZone(timeZone)
+                : (desc.getDefaultTimeZone() != null
+                && !desc.getDefaultTimeZone().isEmpty() ? TimeZone
+                .getTimeZone(desc.getDefaultTimeZone()) : TimeZone
+                .getDefault());
+        FilePath workspace = build.getWorkspace();
+        List<FilePath> remoteFiles = IOHelpers.locateFiles(workspace,
+                inputPattern);
+        if (remoteFiles.isEmpty()) {
+            LOGGER.warning("No test results found.");
+            listener.getLogger().println("WARNING: No test results found.");
+            return false;
+        }
+        LOGGER.info("Copying test results to master...");
+        listener.getLogger().println("INFO: Copying test results to master...");
+        IOHelpers.copyToBuildDir(build, remoteFiles);
+        LOGGER.info("Copying test results complete.");
+        listener.getLogger().println("INFO: Copying test results complete.");
+        String buildPath = build.getRootDir().getAbsolutePath();
+        String inputPath = IOHelpers.concatPathParts(buildPath,
+                Constants.INPUT_DIR_RELATIVE_PATH);
+        String outputPath = IOHelpers.concatPathParts(buildPath,
+                Constants.OUTPUT_DIR_RELATIVE_PATH);
+        String monoReportFile = IOHelpers.concatPathParts(outputPath,
+                Constants.MONO_REPORT_NAME);
+        //pass startOffset, testDuration to perfcharts
+        CgtPerfProxy cgtPerf = new CgtPerfProxy(desc.getCgtHome(),
+                desc.getCgtLib(), desc.getCgtLog(), tz, inputPath, outputPath,
+                monoReportFile, startOffset, testDuration,/*fromTime, toTime,*/ excludedTransactionPattern);
+        cgtPerf.setRedirectedOutput(listener.getLogger());
+        if (!cgtPerf.run()) {
+            listener.getLogger().println("Perf&Res report generated failed.");
+            LOGGER.severe("SEVERE: Perf&Res report generated failed.");
+            return false;
+        }
+        build.addAction(new PerfchartsBuildAction(build));
+        listener.getLogger().println("INFO: Perf&Res report generated successfully.");
+        LOGGER.info("Perf&Res report generated successfully.");
 
-	@Override
-	public BuildStepMonitor getRequiredMonitorService() {
-		return BuildStepMonitor.NONE;
-	}
+        return true;
+    }
 
-	@Override
-	public DescriptorImpl getDescriptor() {
-		return (DescriptorImpl) super.getDescriptor();
-	}
+    @Override
+    public BuildStepMonitor getRequiredMonitorService() {
+        return BuildStepMonitor.NONE;
+    }
 
-	@Override
-	public Collection<? extends Action> getProjectActions(
-			AbstractProject<?, ?> project) {
-		List<Action> actions = new ArrayList<Action>();
-		actions.add(new PerfchartsProjectTrendAction(project));
-		return actions;
-	}
+    @Override
+    public DescriptorImpl getDescriptor() {
+        return (DescriptorImpl) super.getDescriptor();
+    }
 
-	public String getInputPattern() {
-		return inputPattern;
-	}
+    @Override
+    public Collection<? extends Action> getProjectActions(
+            AbstractProject<?, ?> project) {
+        List<Action> actions = new ArrayList<Action>();
+        actions.add(new PerfchartsProjectTrendAction(project));
+        return actions;
+    }
 
-	public void setInputPattern(String inputPattern) {
-		this.inputPattern = inputPattern;
-	}
+    public String getInputPattern() {
+        return inputPattern;
+    }
 
-	public String getTimeZone() {
-		return timeZone;
-	}
+    public void setInputPattern(String inputPattern) {
+        this.inputPattern = inputPattern;
+    }
 
-	public void setTimeZone(String timeZone) {
-		this.timeZone = timeZone;
-	}
-    
-	/*
-	public String getFromTime() {
-		return fromTime;
-	}
+    public String getTimeZone() {
+        return timeZone;
+    }
 
-	public void setFromTime(String fromTime) {
-		this.fromTime = fromTime;
-	}
+    public void setTimeZone(String timeZone) {
+        this.timeZone = timeZone;
+    }
 
-	public String getToTime() {
-		return toTime;
-	}
+    /*
+    public String getFromTime() {
+        return fromTime;
+    }
 
-	public void setToTime(String toTime) {
-		this.toTime = toTime;
-	}
+    public void setFromTime(String fromTime) {
+        this.fromTime = fromTime;
+    }
+
+    public String getToTime() {
+        return toTime;
+    }
+
+    public void setToTime(String toTime) {
+        this.toTime = toTime;
+    }
      */
-	public String getExcludedTransactionPattern() {
-		return excludedTransactionPattern;
-	}
+    public String getExcludedTransactionPattern() {
+        return excludedTransactionPattern;
+    }
 
-	public void setExcludedTransactionPattern(String excludedTransactionPattern) {
-		this.excludedTransactionPattern = excludedTransactionPattern;
-	}
+    public void setExcludedTransactionPattern(String excludedTransactionPattern) {
+        this.excludedTransactionPattern = excludedTransactionPattern;
+    }
 
-	public String getStartOffset() {
-		return startOffset;
-	}
+    public String getStartOffset() {
+        return startOffset;
+    }
 
-	public void setStartOffset(String startOffset) {
-		this.startOffset = startOffset;
-	}
+    public void setStartOffset(String startOffset) {
+        this.startOffset = startOffset;
+    }
 
-	public String getTestDuration() {
-		return testDuration;
-	}
+    public String getTestDuration() {
+        return testDuration;
+    }
 
-	public void setTestDuration(String testDuration) {
-		this.testDuration = testDuration;
-	}
+    public void setTestDuration(String testDuration) {
+        this.testDuration = testDuration;
+    }
 
 }
