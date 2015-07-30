@@ -1,5 +1,9 @@
 package org.jenkinsci.plugins.perfci;
 
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
+import org.apache.commons.io.IOUtils;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -9,103 +13,99 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.IOUtils;
-
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-
 public class TagManager {
-	private static final Logger LOGGER = Logger.getLogger(TagManager.class
-			.getName());
-	private final static String TAG_RELATIVE_PATH = IOHelpers.concatPathParts(
-			Constants.PERF_CHARTS_RELATIVE_PATH, "tags");
-	public final static Pattern TAGS_PATTERN = Pattern
-			.compile("^\\w+([,]\\w+)*$");
-	public final static Pattern TAGS_INPUT_PATTERN = Pattern
-			.compile("^(#\\d+|\\w+)([,](#\\d+|\\w+))*$");
+    private static final Logger LOGGER = Logger.getLogger(TagManager.class
+            .getName());
+    private final static String TAG_RELATIVE_PATH = IOHelpers.concatPathParts(
+            Constants.PERF_CHARTS_RELATIVE_PATH, "tags");
+    public final static Pattern TAGS_PATTERN = Pattern
+            .compile("^\\w+([,]\\w+)*$");
+    public final static Pattern TAGS_INPUT_PATTERN = Pattern
+            .compile("^(#\\d+|\\w+)([,](#\\d+|\\w+))*$");
 
-	private static String loadTagsString(File tagFile) throws IOException {
-		return loadTagsString(tagFile, false);
-	}
-	
-	private static String loadTagsString(File tagFile, boolean ignoreCheck) throws IOException {
-		LOGGER.info("load tags file '" + tagFile.getAbsolutePath() + "'.");
-		try {
-			String content = IOHelpers.readToEnd(tagFile);
-			if (!ignoreCheck && !isTagsStringValid(content)) {
-				LOGGER.warning("Invalid tags file '"
-						+ tagFile.getAbsolutePath() + "'.");
-				return null;
-			}
-			return content;
-		} catch (FileNotFoundException ex) {
-			return "";
-		}
-	}
+    private static String loadTagsString(File tagFile) throws IOException {
+        return loadTagsString(tagFile, false);
+    }
 
-	public static String loadTagsStringForBuild(AbstractBuild<?, ?> build)
-			throws IOException {
-		File tagFile = new File(IOHelpers.concatPathParts(build.getRootDir()
-				.getAbsolutePath(), TAG_RELATIVE_PATH));
-		return loadTagsString(tagFile);
-	}
+    private static String loadTagsString(File tagFile, boolean ignoreCheck) throws IOException {
+        LOGGER.info("load tags file '" + tagFile.getAbsolutePath() + "'.");
+        try {
+            String content = IOHelpers.readToEnd(tagFile);
+            if (!ignoreCheck && !isTagsStringValid(content)) {
+                LOGGER.warning("Invalid tags file '"
+                        + tagFile.getAbsolutePath() + "'.");
+                return null;
+            }
+            return content;
+        } catch (FileNotFoundException ex) {
+            return "";
+        }
+    }
 
-	public static Set<String> loadTagsForBuild(AbstractBuild<?, ?> build)
-			throws IOException {
-		Set<String> set = new HashSet<String>();
-		String tagsString = loadTagsStringForBuild(build);
-		if (tagsString != null && !tagsString.isEmpty()) {
-			for (String tag : tagsString.split(","))
-				set.add(tag);
-		}
-		return set;
-	}
+    public static String loadTagsStringForBuild(AbstractBuild<?, ?> build)
+            throws IOException {
+        File tagFile = new File(IOHelpers.concatPathParts(build.getRootDir()
+                .getAbsolutePath(), TAG_RELATIVE_PATH));
+        return loadTagsString(tagFile);
+    }
 
-	private static boolean saveTagsString(File tagFile, String tagsString)
-			throws FileNotFoundException, IOException {
-		return saveTagsString(tagFile, tagsString, false);
-	}
-	
-	private static boolean saveTagsString(File tagFile, String tagsString, boolean ignoreCheck)
-			throws FileNotFoundException, IOException {
-		if (tagsString != null && !tagsString.isEmpty()
-				&& !ignoreCheck && !isTagsStringValid(tagsString)) {
-			LOGGER.warning("Invalid tags string '" + tagsString + "'.");
-			return false;
-		}
-		if (tagsString == null)
-			tagsString = "";
-		LOGGER.info("write tags file '" + tagFile.getAbsolutePath() + "'.");
-		tagFile.getParentFile().mkdirs();
-		IOUtils.write(tagsString, new FileOutputStream(tagFile), "UTF-8");
-		return true;
-	}
+    public static Set<String> loadTagsForBuild(AbstractBuild<?, ?> build)
+            throws IOException {
+        Set<String> set = new HashSet<String>();
+        String tagsString = loadTagsStringForBuild(build);
+        if (tagsString != null && !tagsString.isEmpty()) {
+            for (String tag : tagsString.split(","))
+                set.add(tag);
+        }
+        return set;
+    }
 
-	public static boolean saveTagsStringForBuild(AbstractBuild<?, ?> build,
-			String tagsString) throws FileNotFoundException, IOException {
-		File tagFile = new File(IOHelpers.concatPathParts(build.getRootDir()
-				.getAbsolutePath(), TAG_RELATIVE_PATH));
-		return saveTagsString(tagFile, tagsString);
-	}
+    private static boolean saveTagsString(File tagFile, String tagsString)
+            throws FileNotFoundException, IOException {
+        return saveTagsString(tagFile, tagsString, false);
+    }
 
-	public static boolean isTagsStringValid(String tags) {
-		return TAGS_PATTERN.matcher(tags).matches();
-	}
-	public static boolean isTagsInputStringValid(String tags) {
-		return TAGS_INPUT_PATTERN.matcher(tags).matches();
-	}
+    private static boolean saveTagsString(File tagFile, String tagsString, boolean ignoreCheck)
+            throws FileNotFoundException, IOException {
+        if (tagsString != null && !tagsString.isEmpty()
+                && !ignoreCheck && !isTagsStringValid(tagsString)) {
+            LOGGER.warning("Invalid tags string '" + tagsString + "'.");
+            return false;
+        }
+        if (tagsString == null)
+            tagsString = "";
+        LOGGER.info("write tags file '" + tagFile.getAbsolutePath() + "'.");
+        tagFile.getParentFile().mkdirs();
+        IOUtils.write(tagsString, new FileOutputStream(tagFile), "UTF-8");
+        return true;
+    }
 
-	public static String loadTagsStringOfLastTrendReportForProject(
-			AbstractProject<?, ?> proj) throws IOException {
-		File tagFile = new File(IOHelpers.concatPathParts(proj.getBuildDir()
-				.getAbsolutePath(), TAG_RELATIVE_PATH));
-		return loadTagsString(tagFile, true);
-	}
+    public static boolean saveTagsStringForBuild(AbstractBuild<?, ?> build,
+                                                 String tagsString) throws FileNotFoundException, IOException {
+        File tagFile = new File(IOHelpers.concatPathParts(build.getRootDir()
+                .getAbsolutePath(), TAG_RELATIVE_PATH));
+        return saveTagsString(tagFile, tagsString);
+    }
 
-	public static boolean saveTagsStringOfLastTrendReportForProject(
-			AbstractProject<?, ?> proj, String tagsString) throws IOException {
-		File tagFile = new File(IOHelpers.concatPathParts(proj.getBuildDir()
-				.getAbsolutePath(), TAG_RELATIVE_PATH));
-		return saveTagsString(tagFile, tagsString, true);
-	}
+    public static boolean isTagsStringValid(String tags) {
+        return TAGS_PATTERN.matcher(tags).matches();
+    }
+
+    public static boolean isTagsInputStringValid(String tags) {
+        return TAGS_INPUT_PATTERN.matcher(tags).matches();
+    }
+
+    public static String loadTagsStringOfLastTrendReportForProject(
+            AbstractProject<?, ?> proj) throws IOException {
+        File tagFile = new File(IOHelpers.concatPathParts(proj.getBuildDir()
+                .getAbsolutePath(), TAG_RELATIVE_PATH));
+        return loadTagsString(tagFile, true);
+    }
+
+    public static boolean saveTagsStringOfLastTrendReportForProject(
+            AbstractProject<?, ?> proj, String tagsString) throws IOException {
+        File tagFile = new File(IOHelpers.concatPathParts(proj.getBuildDir()
+                .getAbsolutePath(), TAG_RELATIVE_PATH));
+        return saveTagsString(tagFile, tagsString, true);
+    }
 }

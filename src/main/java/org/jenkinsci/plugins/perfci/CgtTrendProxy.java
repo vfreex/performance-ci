@@ -1,146 +1,142 @@
 package org.jenkinsci.plugins.perfci;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.logging.Logger;
 
 public class CgtTrendProxy {
-	private final static Logger LOGGER = Logger.getLogger(CgtTrendProxy.class
-			.getName());
-	private String cgtHome;
-	private String cgtLib;
-	private String cgtLog;
-	private TimeZone timeZone;
-	private String inputFile;
-	private String outputDir;
-	private String monoReportPath;
-	private String fromTime;
-	private String toTime;
-	private PrintStream redirectedOutput;
+    private final static Logger LOGGER = Logger.getLogger(CgtTrendProxy.class
+            .getName());
+    private String cgtHome;
+    private String cgtLib;
+    private String cgtLog;
+    private TimeZone timeZone;
+    private String inputFile;
+    private String outputDir;
+    private String monoReportPath;
+    private String fromTime;
+    private String toTime;
+    private PrintStream redirectedOutput;
 
-	public CgtTrendProxy(String cgtHome, String cgtLib, String cgtLog,
-			TimeZone timeZone, String inputFile, String outputDir,
-			String monoReportPath, String fromTime, String toTime) {
-		this.cgtHome = cgtHome;
-		this.cgtLib = cgtLib;
-		this.cgtLog = cgtLog;
-		this.timeZone = timeZone;
-		this.inputFile = inputFile;
-		this.outputDir = outputDir;
-		this.monoReportPath = monoReportPath;
-		this.fromTime = fromTime;
-		this.toTime = toTime;
-	}
+    public CgtTrendProxy(String cgtHome, String cgtLib, String cgtLog,
+                         TimeZone timeZone, String inputFile, String outputDir,
+                         String monoReportPath, String fromTime, String toTime) {
+        this.cgtHome = cgtHome;
+        this.cgtLib = cgtLib;
+        this.cgtLog = cgtLog;
+        this.timeZone = timeZone;
+        this.inputFile = inputFile;
+        this.outputDir = outputDir;
+        this.monoReportPath = monoReportPath;
+        this.fromTime = fromTime;
+        this.toTime = toTime;
+    }
 
-	public boolean run() throws IOException, InterruptedException {
-		List<String> arguments = new ArrayList<String>();
-		arguments.add(cgtHome + File.separator
-				+ Constants.CGT_TREND_RELATIVE_PATH);
-		arguments.add("-d");
-		arguments.add(outputDir);
-		arguments.add("-o");
-		arguments.add(monoReportPath);
-		if (timeZone != null) {
-			arguments.add("-z");
-			arguments.add(timeZone.getID());
-		}
-		if (fromTime != null && !fromTime.isEmpty()) {
-			arguments.add("-f");
-			arguments.add(fromTime);
-		}
-		if (toTime != null && !toTime.isEmpty()) {
-			arguments.add("-t");
-			arguments.add(toTime);
-		}
-		arguments.add(inputFile);
-		ProcessBuilder cgtProcessBuilder = new ProcessBuilder(arguments);
+    public boolean run() throws IOException, InterruptedException {
+        List<String> arguments = new ArrayList<String>();
+        arguments.add(cgtHome + File.separator
+                + Constants.CGT_TREND_RELATIVE_PATH);
+        arguments.add("-d");
+        arguments.add(outputDir);
+        arguments.add("-o");
+        arguments.add(monoReportPath);
+        if (timeZone != null) {
+            arguments.add("-z");
+            arguments.add(timeZone.getID());
+        }
+        if (fromTime != null && !fromTime.isEmpty()) {
+            arguments.add("-f");
+            arguments.add(fromTime);
+        }
+        if (toTime != null && !toTime.isEmpty()) {
+            arguments.add("-t");
+            arguments.add(toTime);
+        }
+        arguments.add(inputFile);
+        ProcessBuilder cgtProcessBuilder = new ProcessBuilder(arguments);
 
-		if (cgtHome != null && !cgtHome.isEmpty())
-			cgtProcessBuilder.environment().put("CGT_HOME", cgtHome);
-		if (cgtLib != null && !cgtLib.isEmpty())
-			cgtProcessBuilder.environment().put("CGT_LIB", cgtLib);
-		if (cgtLog != null && !cgtLog.isEmpty())
-			cgtProcessBuilder.environment().put("CGT_LOG", cgtLog);
+        if (cgtHome != null && !cgtHome.isEmpty())
+            cgtProcessBuilder.environment().put("CGT_HOME", cgtHome);
+        if (cgtLib != null && !cgtLib.isEmpty())
+            cgtProcessBuilder.environment().put("CGT_LIB", cgtLib);
+        if (cgtLog != null && !cgtLog.isEmpty())
+            cgtProcessBuilder.environment().put("CGT_LOG", cgtLog);
 
-		LOGGER.info("Generating trend report from '" + inputFile + "'...");
-		if (redirectedOutput != null)
-			redirectedOutput.println("INFO: Generating trend report from '"
-					+ inputFile + "'...");
+        LOGGER.info("Generating trend report from '" + inputFile + "'...");
+        if (redirectedOutput != null)
+            redirectedOutput.println("INFO: Generating trend report from '"
+                    + inputFile + "'...");
 
-		Process cgtProcess = cgtProcessBuilder.start();
-		PrintStream errStream = redirectedOutput == null ? System.err
-				: redirectedOutput;
-		BufferedReader reader = new BufferedReader(new InputStreamReader(
-				cgtProcess.getErrorStream()));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			errStream.println(line);
-		}
-		int returnCode = cgtProcess.waitFor();
-		boolean success = returnCode == 0;
-		return success;
-	}
+        Process cgtProcess = cgtProcessBuilder.start();
+        PrintStream errStream = redirectedOutput == null ? System.err
+                : redirectedOutput;
+        BufferedReader reader = new BufferedReader(new InputStreamReader(
+                cgtProcess.getErrorStream()));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            errStream.println(line);
+        }
+        int returnCode = cgtProcess.waitFor();
+        boolean success = returnCode == 0;
+        return success;
+    }
 
-	public String getCgtHome() {
-		return cgtHome;
-	}
+    public String getCgtHome() {
+        return cgtHome;
+    }
 
-	public void setCgtHome(String cgtHome) {
-		this.cgtHome = cgtHome;
-	}
+    public void setCgtHome(String cgtHome) {
+        this.cgtHome = cgtHome;
+    }
 
-	public String getCgtLib() {
-		return cgtLib;
-	}
+    public String getCgtLib() {
+        return cgtLib;
+    }
 
-	public void setCgtLib(String cgtLib) {
-		this.cgtLib = cgtLib;
-	}
+    public void setCgtLib(String cgtLib) {
+        this.cgtLib = cgtLib;
+    }
 
-	public String getCgtLog() {
-		return cgtLog;
-	}
+    public String getCgtLog() {
+        return cgtLog;
+    }
 
-	public void setCgtLog(String cgtLog) {
-		this.cgtLog = cgtLog;
-	}
+    public void setCgtLog(String cgtLog) {
+        this.cgtLog = cgtLog;
+    }
 
-	public TimeZone getTimeZone() {
-		return timeZone;
-	}
+    public TimeZone getTimeZone() {
+        return timeZone;
+    }
 
-	public void setTimeZone(TimeZone timeZone) {
-		this.timeZone = timeZone;
-	}
+    public void setTimeZone(TimeZone timeZone) {
+        this.timeZone = timeZone;
+    }
 
-	public String getFromTime() {
-		return fromTime;
-	}
+    public String getFromTime() {
+        return fromTime;
+    }
 
-	public void setFromTime(String fromTime) {
-		this.fromTime = fromTime;
-	}
+    public void setFromTime(String fromTime) {
+        this.fromTime = fromTime;
+    }
 
-	public String getToTime() {
-		return toTime;
-	}
+    public String getToTime() {
+        return toTime;
+    }
 
-	public void setToTime(String toTime) {
-		this.toTime = toTime;
-	}
+    public void setToTime(String toTime) {
+        this.toTime = toTime;
+    }
 
-	public PrintStream getRedirectedOutput() {
-		return redirectedOutput;
-	}
+    public PrintStream getRedirectedOutput() {
+        return redirectedOutput;
+    }
 
-	public void setRedirectedOutput(PrintStream redirectedOutput) {
-		this.redirectedOutput = redirectedOutput;
-	}
+    public void setRedirectedOutput(PrintStream redirectedOutput) {
+        this.redirectedOutput = redirectedOutput;
+    }
 
 }

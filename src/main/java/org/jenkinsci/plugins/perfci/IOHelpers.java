@@ -77,7 +77,7 @@ public class IOHelpers {
 
         // First use ant-style pattern
         /*
-		 * try { FilePath[] ret = workspace.list(includes); if (ret.length > 0)
+         * try { FilePath[] ret = workspace.list(includes); if (ret.length > 0)
 		 * { return Arrays.asList(ret); }
 		 */
         // Agoley : Possible fix, if we specify more than one result file
