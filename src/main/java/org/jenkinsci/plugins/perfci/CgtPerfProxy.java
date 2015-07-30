@@ -20,14 +20,18 @@ public class CgtPerfProxy {
 	private String inputDir;
 	private String outputDir;
 	private String monoReportPath;
+	private String startOffset;
+	private String testDuration;
+	/*
 	private String fromTime;
 	private String toTime;
+	*/
 	private String excludedTransactionPattern;
 	private PrintStream redirectedOutput;
 
 	public CgtPerfProxy(String cgtHome, String cgtLib, String cgtLog,
 			TimeZone timeZone, String inputDir, String outputDir,
-			String monoReportPath, String fromTime, String toTime,
+			String monoReportPath, String startOffset, String testDuration,/*String fromTime, String toTime,*/
 			String excludedTransactionPattern) {
 		this.cgtHome = cgtHome;
 		this.cgtLib = cgtLib;
@@ -36,8 +40,12 @@ public class CgtPerfProxy {
 		this.inputDir = inputDir;
 		this.outputDir = outputDir;
 		this.monoReportPath = monoReportPath;
+		this.startOffset = startOffset;
+		this.testDuration = testDuration;
+		/*
 		this.fromTime = fromTime;
 		this.toTime = toTime;
+		*/
 		this.excludedTransactionPattern = excludedTransactionPattern;
 	}
 
@@ -53,6 +61,15 @@ public class CgtPerfProxy {
 			arguments.add("-z");
 			arguments.add(timeZone.getID());
 		}
+		if (startOffset != null && !startOffset.isEmpty()) {
+			arguments.add("-s");
+			arguments.add(startOffset);
+		}
+		if (testDuration != null && !testDuration.isEmpty()) {
+			arguments.add("-l");
+			arguments.add(testDuration);
+		}
+		/*
 		if (fromTime != null && !fromTime.isEmpty()) {
 			arguments.add("-f");
 			arguments.add(fromTime);
@@ -61,6 +78,7 @@ public class CgtPerfProxy {
 			arguments.add("-t");
 			arguments.add(toTime);
 		}
+		*/
 		if (excludedTransactionPattern != null
 				&& !excludedTransactionPattern.isEmpty()) {
 			arguments.add("-e");
@@ -135,7 +153,7 @@ public class CgtPerfProxy {
 	public void setTimeZone(TimeZone timeZone) {
 		this.timeZone = timeZone;
 	}
-
+    /*
 	public String getFromTime() {
 		return fromTime;
 	}
@@ -151,6 +169,7 @@ public class CgtPerfProxy {
 	public void setToTime(String toTime) {
 		this.toTime = toTime;
 	}
+	*/
 
 	public String getExcludedTransactionPattern() {
 		return excludedTransactionPattern;
@@ -166,5 +185,21 @@ public class CgtPerfProxy {
 
 	public void setRedirectedOutput(PrintStream redirectedOutput) {
 		this.redirectedOutput = redirectedOutput;
+	}
+
+	public String getStartOffset() {
+		return startOffset;
+	}
+
+	public void setStartOffset(String startOffset) {
+		this.startOffset = startOffset;
+	}
+
+	public String getTestDuration() {
+		return testDuration;
+	}
+
+	public void setTestDuration(String testDuration) {
+		this.testDuration = testDuration;
 	}
 }
