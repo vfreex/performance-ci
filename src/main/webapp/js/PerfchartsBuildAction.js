@@ -38,5 +38,32 @@
 				if (selectedBuildNumber)
 					location.href = "comparisonReport/" + selectedBuildNumber;
 			});
+		//add the action for startOffset related setting
+		var $startOffset_error_msg = $("#startOffset_error_msg")
+		$("#btn_generate_time").click(function(){
+                        $startOffset_error_msg.removeClass("startOffset_error_msg_error");
+			$startOffset_error_msg.removeClass("startOffset_error_msg_fine");
+
+			$.post("startOffset", { startOffset: $("#startOffset").val(), testDuration: $("#testDuration").val() }, function(data, status, jqXHR) {
+				if (status !== "success"){
+					$startOffset_error_msg.addClass("startOffset_error_msg_error");
+					$startOffset_error_msg.text("Numberic setting are need.");
+					return;
+				}
+				if (data.error !== 0) {
+					$startOffset_error_msg.addClass("startOffset_error_msg_error");
+					$startOffset_error_msg.text(data.errorMessage);
+					return;
+				}
+                                   location.reload(true);
+				}).fail(function() {
+					$startOffset_error_msg.addClass("startOffset_error_msg_error");
+					$startOffset_error_msg.text("Failed.");
+					});
+				
+
+			});
+			
+
 	});
 })(jQuery);
