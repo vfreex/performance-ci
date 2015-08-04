@@ -62,7 +62,7 @@
 						StartOffset (min):<input id="startOffset" type="text" name="startOffset" />
 						TestDuration (min):<input id="testDuration" type="text" name="testDuration" />
 						<input id="btn_generate_time" type="button" name="btn_generate_time" value="generate" />
-                        <span id="startOffset_error_msg" class="error_msg"></span>
+                        			<span id="startOffset_error_msg" class="error_msg"></span>
 						</form>
 					</fieldset>
 				</div>
