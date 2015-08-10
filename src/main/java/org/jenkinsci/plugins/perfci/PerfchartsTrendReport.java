@@ -14,11 +14,13 @@ import java.util.logging.Logger;
 public class PerfchartsTrendReport extends PerfchartsReport {
     private final static Logger LOGGER = Logger
             .getLogger(PerfchartsTrendReport.class.getName());
-    private String tags;
+    private String urlID;
+    private String reportID;
 
-    public PerfchartsTrendReport(AbstractProject<?, ?> project) {
+    public PerfchartsTrendReport(AbstractProject<?, ?> project, String urlID) {
         super(project);
-        // TODO Auto-generated constructor stub
+        this.urlID = urlID;
+        this.reportID = TrendReportManager.calculateReportID(urlID);
     }
 
     @Override
@@ -29,25 +31,25 @@ public class PerfchartsTrendReport extends PerfchartsReport {
     public void doMonoReport(StaplerRequest request, StaplerResponse response)
             throws Exception {
         response.setContentType("text/html");
-        synchronized (project) {
-            String dataFile = TrendReportManager
-                    .getTrendMonoReportPath(project);
-            if (!new File(dataFile).exists()) {
-                IOUtils.write("<h1>No Trend Report Found.</h1>",
-                        response.getOutputStream());
-                return;
-            }
-            IOHelpers.copySteam(new FileInputStream(dataFile),
+        //synchronized (project) {
+        String dataFile = TrendReportManager
+                .getTrendMonoReportPath(project, reportID);
+        if (!new File(dataFile).exists()) {
+            IOUtils.write("<h1>No Trend Report Found.</h1><p> Requested File: " + dataFile + "</p>",
                     response.getOutputStream());
+            return;
         }
+        IOHelpers.copySteam(new FileInputStream(dataFile),
+                response.getOutputStream());
+        // }
     }
 
     public void doTrendDataJS(StaplerRequest request, StaplerResponse response)
             throws Exception {
         response.setContentType("text/javascript");
         synchronized (project) {
-            String dataFile = TrendReportManager.getTrendDataJSPath(project);
-            if (!new File(dataFile).exists()) {
+            String dataFile = TrendReportManager.getTrendDataJSPath(project, reportID);
+            if (!new File(dataFile).exists() && !generate()) {
                 return;
             }
             IOHelpers.copySteam(new FileInputStream(dataFile),
@@ -55,22 +57,16 @@ public class PerfchartsTrendReport extends PerfchartsReport {
         }
     }
 
+    private boolean generate() throws Exception  {
+        return TrendReportManager.generateReport(project, urlID);
+    }
+
     public void doGenerate(StaplerRequest request, StaplerResponse response)
             throws Exception {
+        String builds = request.getParameter("builds");
         response.setContentType("text/json");
-        String tagsString = request.getParameter("tags");
-        if (tagsString == null)
-            tagsString = "";
         JSONObject result = new JSONObject();
-        if (!tagsString.isEmpty() && !TagManager.isTagsInputStringValid(tagsString)) {
-            result.put("error", 1);
-            result.put("errorMessage", "Invalid tag list format.");
-            writeJSON(response, result);
-            return;
-        }
-        boolean success = TagManager.saveTagsStringOfLastTrendReportForProject(
-                project, tagsString)
-                && TrendReportManager.generateReport(project, tagsString);
+        boolean success = generate();
         if (!success) {
             result.put("error", 1);
             result.put("errorMessage", "Fail to generate trend report.");
@@ -82,21 +78,21 @@ public class PerfchartsTrendReport extends PerfchartsReport {
         writeJSON(response, result);
     }
 
-    public String getTags() {
-        if (tags == null) {
-            try {
-                this.tags = TagManager
-                        .loadTagsStringOfLastTrendReportForProject(project);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public void doRefresh(StaplerRequest request, StaplerResponse response)
+            throws Exception {
+        String builds = request.getParameter("builds");
+        response.setContentType("text/json");
+        JSONObject result = new JSONObject();
+        boolean success = generate();
+        if (!success) {
+            result.put("error", 1);
+            result.put("errorMessage", "Fail to generate trend report.");
+            writeJSON(response, result);
+            return;
         }
-        return tags;
-    }
-
-    public void setTags(String tags) {
-        this.tags = tags;
-        LOGGER.info("tag is changed to " + tags);
+        result.put("error", 0);
+        result.put("errorMessage", "Generated.");
+        writeJSON(response, result);
     }
 
     private static void writeJSON(StaplerResponse response, JSONObject json)
@@ -104,4 +100,15 @@ public class PerfchartsTrendReport extends PerfchartsReport {
         IOUtils.write(json.toString(), response.getOutputStream());
     }
 
+    public String getUrlID() {
+        return urlID;
+    }
+
+    public String getBuildIDs() {
+        return urlID.replace('_', ',');
+    }
+
+    public String getReportID() {
+        return reportID;
+    }
 }

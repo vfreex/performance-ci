@@ -1,0 +1,32 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler"
+         xmlns:l="/lib/layout" xmlns:f="/lib/form" xmlns="http://www.w3.org/1999/xhtml">
+    <l:layout title="">
+        <st:include it="${it.project}" page="sidepanel.jelly"/>
+        <l:main-panel>
+            <style type="text/css">
+                .error_msg_error {
+                color: red;
+                }
+            </style>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/jquery-1.11.1.min.js"></script>
+            <script type="text/javascript">
+                jQuery.noConflict();
+            </script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/js/PerfchartsProjectTrendAction.js"></script>
+            <form action="submit" method="post" name="builds_input">
+                <f:entry>
+                    <textarea id="builds" name="builds"></textarea>
+                </f:entry>
+                <input id="btn_submit" type="button" value="OK"/>
+                <p id="message"></p>
+                <ul>
+                    <li>Demo list 1</li>
+                    <li>Demo list 2</li>
+                    <li>Demo list 3</li>
+                </ul>
+            </form>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>
