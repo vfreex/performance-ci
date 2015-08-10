@@ -4,6 +4,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.Action;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+
 import org.apache.commons.io.IOUtils;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -11,6 +12,7 @@ import org.kohsuke.stapler.StaplerResponse;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.TimeZone;
 import java.util.logging.Logger;
 
 public class PerfchartsBuildAction implements Action {
@@ -109,7 +111,7 @@ public class PerfchartsBuildAction implements Action {
         for (AbstractBuild<?, ?> buildItem : build.getProject().getBuilds()) {
             //whenever the build number larger or not, can get the builds in "sel_build"
                         /*
-			if (buildItem.number >= build.number || buildItem.getResult().isWorseThan(Result.SUCCESS))
+			if (buildItem.number >= build.number || buildItem.getResult().isWorseThan(Result.SUCCESS)) 
 				continue;
                          */
             if (buildItem.number == build.number)
@@ -123,6 +125,66 @@ public class PerfchartsBuildAction implements Action {
         result.put("error", 0);
         result.put("result", builds);
         //result.put("resultCount", builds.size());
+        writeJSON(response, result);
+    }
+
+    // add the startOffset & testDuration in the Performance Report
+    public void buildReport(String startOffset, String testDuration)
+            throws IOException, InterruptedException {
+        String sourceBuildPath = build.getRootDir().getAbsolutePath();
+        String sourceDisplayName = build.getDisplayName();
+
+        System.out.println("sourceDisplayName is " + sourceDisplayName);
+        String inputPath = IOHelpers.concatPathParts(sourceBuildPath,
+                Constants.INPUT_DIR_RELATIVE_PATH);
+        String outputPath = IOHelpers.concatPathParts(sourceBuildPath,
+                Constants.OUTPUT_DIR_RELATIVE_PATH);
+        String monoReportFile = IOHelpers.concatPathParts(outputPath,
+                Constants.MONO_REPORT_NAME);
+        PerfchartsRecorder.DescriptorImpl des = new PerfchartsRecorder.DescriptorImpl();
+        String cgthome = des.getCgtHome();
+        String cgtlib = des.getCgtLib();
+        String cgtlog = des.getCgtLog();
+        TimeZone tz = TimeZone.getTimeZone("UTC");
+        CgtPerfProxy cgtPerf = new CgtPerfProxy(cgthome, cgtlib, cgtlog, tz,
+                inputPath, outputPath, monoReportFile, startOffset,
+                testDuration, "null");
+        if (!cgtPerf.run()) {
+            System.out.println("cgtperf.run() failed");
+        }
+    }
+
+    public void doStartOffset(StaplerRequest request, StaplerResponse response)
+            throws Exception {
+        JSONObject result = new JSONObject();
+        response.setContentType("text/json");
+        String startOffset = request.getParameter("startOffset");
+        String testDuration = request.getParameter("testDuration");
+
+        // check the startOffset & testDuration
+        if (!startOffset.matches("[0-9]+") || startOffset == null
+                || startOffset.isEmpty()) {
+            result.put("errorMessage", "Numberic settings are needed.");
+            writeJSON(response, result);
+            return;
+        }
+        if (testDuration.length() > 0 && !testDuration.matches("[0-9]+")) {
+            result.put("errorMessage", "Numberic settings are needed.");
+            writeJSON(response, result);
+            return;
+        }
+        try {
+            buildReport(startOffset, testDuration);
+        } catch (Exception e) {
+            result.put("error", 1);
+            result.put("errorMessage", "Fail to generate performance report."
+                    + e.toString());
+            writeJSON(response, result);
+            e.printStackTrace();
+            return;
+        }
+        result.put("error", 0);
+        result.put("errorMessage", "Generated.");
         writeJSON(response, result);
     }
 

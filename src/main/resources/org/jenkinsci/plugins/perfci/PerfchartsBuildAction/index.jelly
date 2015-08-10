@@ -34,11 +34,12 @@
 				#report_container, #report_container * {
 				box-sizing:content-box;
 				}
-				.tag_error_msg_error {
+				.tag_error_msg_error, .startOffset_error_msg_error {
 				color: red;
 				}
 				.tag_error_msg_fine {
 				color: green;
+				}
 				}
 			</style>
 			<script type="text/javascript"
@@ -55,7 +56,14 @@
 						<input id="txt_tag" type="text" name="tags" value="${it.tags}"
 							placeholder="ex. normal,success" title="a comma seperated list" />
 						<span id="tag_error_msg" class="error_msg"></span>
-
+					</fieldset>
+					<fieldset>
+						<form id="set_time">
+						StartOffset (min):<input id="startOffset" type="text" name="startOffset" />
+						TestDuration (min):<input id="testDuration" type="text" name="testDuration" />
+						<input id="btn_generate_time" type="button" name="btn_generate_time" value="generate" />
+                                                <span id="startOffset_error_msg" class="error_msg"></span>
+						</form>
 					</fieldset>
 				</div>
 				<header>
