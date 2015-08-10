@@ -25,6 +25,7 @@ public class Constants {
 
     public final static String TREND_DIR_RELATIVE_PATH = PERF_CHARTS_RELATIVE_PATH
             + File.separator + "trend";
+    public final static String TREND_INPUT_DEFAULT_FILENAME = "trend_input.txt";
     public final static String TREND_INPUT_RELATIVE_PATH = TREND_DIR_RELATIVE_PATH
             + File.separator + "trend_input.txt";
     public final static String TREND_MONO_REPORT_NAME = "trend_report.html";
