@@ -61,23 +61,6 @@ public class PerfchartsTrendReport extends PerfchartsReport {
         return TrendReportManager.generateReport(project, urlID);
     }
 
-    public void doGenerate(StaplerRequest request, StaplerResponse response)
-            throws Exception {
-        String builds = request.getParameter("builds");
-        response.setContentType("text/json");
-        JSONObject result = new JSONObject();
-        boolean success = generate();
-        if (!success) {
-            result.put("error", 1);
-            result.put("errorMessage", "Fail to generate trend report.");
-            writeJSON(response, result);
-            return;
-        }
-        result.put("error", 0);
-        result.put("errorMessage", "Generated.");
-        writeJSON(response, result);
-    }
-
     public void doRefresh(StaplerRequest request, StaplerResponse response)
             throws Exception {
         String builds = request.getParameter("builds");

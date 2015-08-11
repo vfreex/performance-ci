@@ -76,7 +76,7 @@ public class TrendReportManager {
     }
 
     public static boolean generateReport(AbstractProject<?, ?> project, String urlID) throws IOException, InterruptedException {
-        return generateReport(project, urlID.split("_"));
+        return generateReport(project, urlID == null || urlID.isEmpty() ? new String[0] : urlID.split("_"));
     }
 
     public static boolean generateReport(AbstractProject<?, ?> project, String[] parts) throws IOException, InterruptedException {
@@ -92,24 +92,29 @@ public class TrendReportManager {
         OutputStreamWriter inputFileWriter = new OutputStreamWriter(new FileOutputStream(trendInputFilePath));
         CSVPrinter csvPrinter = new CSVPrinter(inputFileWriter, CSVFormat.DEFAULT);
 
-        Pattern rangePattern = Pattern.compile("(\\d+)-(\\d+)");
-        for (String part : parts) {
-            Matcher m = rangePattern.matcher(part);
-            if (m.matches()) { // is a range
-                int first = Integer.parseInt(m.group(1));
-                int second = Integer.parseInt(m.group(2));
-                if (first <= second) { // increase
-                    for (int i = first; i <= second; ++i) {
-                        writeBuildInfo(csvPrinter, project, i);
+        if (parts == null || parts.length == 0) {
+            for (AbstractBuild<?, ?> build : project.getBuilds()) {
+                writeBuildInfo(csvPrinter, build);
+            }
+        } else {
+            Pattern rangePattern = Pattern.compile("(\\d+)-(\\d+)");
+            for (String part : parts) {
+                Matcher m = rangePattern.matcher(part);
+                if (m.matches()) { // is a range
+                    int first = Integer.parseInt(m.group(1));
+                    int second = Integer.parseInt(m.group(2));
+                    if (first <= second) { // increase
+                        for (int i = first; i <= second; ++i) {
+                            writeBuildInfo(csvPrinter, project, i);
+                        }
+                    } else { //decrease
+                        for (int i = first; i >= second; --i) {
+                            writeBuildInfo(csvPrinter, project, i);
+                        }
                     }
-                } else { //decrease
-                    for (int i = first; i >= second; --i) {
-                        writeBuildInfo(csvPrinter, project, i);
-                    }
+                } else {
+                    writeBuildInfo(csvPrinter, project, Integer.parseInt(part));
                 }
-                //response.getWriter().println("<p>RANGE: " + m.group(1) + " - " + m.group(2) + "</p>\n");
-            } else {
-                writeBuildInfo(csvPrinter, project, Integer.parseInt(part));
             }
         }
         csvPrinter.flush();
@@ -131,16 +136,18 @@ public class TrendReportManager {
 
     private static boolean writeBuildInfo(CSVPrinter csvPrinter, AbstractProject<?, ?> project, int buildNumber) throws IOException {
         AbstractBuild<?, ?> build = project.getBuildByNumber(buildNumber);
+        return writeBuildInfo(csvPrinter, build);
+    }
+
+    private static boolean writeBuildInfo(CSVPrinter csvPrinter, AbstractBuild<?, ?> build) throws IOException {
         if (build == null) {
-            LOGGER.info("Skip build #"
-                    + buildNumber
-                    + " for trend report generation: Unknown build");
+            LOGGER.info("Skip unknown build");
             return false;
         }
         String perfDataPath = getPerfDataPathForBuild(build);
         if (!new File(perfDataPath).exists()) {
             LOGGER.info("Skip build #"
-                    + buildNumber
+                    + build.number
                     + " for trend report generation: Its perf&res report is not found.");
             return false;
         }

@@ -6,8 +6,8 @@ import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
+import javax.annotation.Nullable;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PerfchartsProjectTrendAction implements Action/*, StaplerProxy*/ {
@@ -52,14 +52,16 @@ public class PerfchartsProjectTrendAction implements Action/*, StaplerProxy*/ {
         String input = request.getParameter("builds");
         Pattern pattern = Pattern.compile("\\d+(-\\d+)*(,\\d+(-\\d+)*)*");
         //response.getWriter().println("<p>" + input + "</p>\n");
-        if (!pattern.matcher(input).matches()) {
+        if (!input.isEmpty() && !pattern.matcher(input).matches()) {
             //response.getWriter().println("<p>ERROR_VALIDATION</p>\n");
             result.put("error", 1);
             result.put("errorMessage", "invalid input format");
             response.getWriter().write(result.toString());
             return;
         }
-        String[] buildParts = input.split(",");
+        String[] buildParts = input.isEmpty() ? new String[]{
+                project.getFirstBuild().number + "-" + project.getLastBuild().number}
+                : input.split(",");
 
         // check cache file existence
         String urlID = TrendReportManager.concatParts(buildParts);
@@ -76,7 +78,7 @@ public class PerfchartsProjectTrendAction implements Action/*, StaplerProxy*/ {
         //response.sendRedirect(302, "show/" + sb.toString());
     }
 
-    public PerfchartsTrendReport getShow(String urlID) throws Exception {
-        return new PerfchartsTrendReport(project,urlID);
+    public PerfchartsTrendReport getShow(@Nullable String urlID) throws Exception {
+        return new PerfchartsTrendReport(project, urlID);
     }
 }

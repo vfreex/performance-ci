@@ -16,16 +16,11 @@
             <script type="text/javascript"
                     src="${resURL}/plugin/perfci/js/PerfchartsProjectTrendAction.js"></script>
             <form action="submit" method="post" name="builds_input">
-                <f:entry>
+                <f:entry description="A comma separated list. Leaving empty means all builds are included.">
                     <textarea id="builds" name="builds"></textarea>
                 </f:entry>
                 <input id="btn_submit" type="button" value="OK"/>
                 <p id="message"></p>
-                <ul>
-                    <li>Demo list 1</li>
-                    <li>Demo list 2</li>
-                    <li>Demo list 3</li>
-                </ul>
             </form>
         </l:main-panel>
     </l:layout>
