@@ -14,6 +14,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,24 +66,34 @@ public class StartMonitorsBuilder extends Builder {
     public boolean perform(final AbstractBuild<?, ?> build,
                            final Launcher launcher, final BuildListener listener)
             throws InterruptedException, IOException {
-        if (isAllMonitorsDisabled) {
-            build.addAction(new ParametersAction(new BooleanParameterValue("isAllMonitorsDisabled", true)));
-            LOGGER.info("WARNING: PerfCI won't start any monitor according to your configuration.");
-            listener.getLogger().println("WARNING: PerfCI won't start any monitor according to your configuration.");
-            return true;
-        }
+        List<ParameterValue> params = new ArrayList<ParameterValue>();
         try {
-            Boolean r = launcher.getChannel().call(
-                    new StartMonitorsCallable(build.getProject().getName(),
-                            build.getId(), build.getWorkspace().getRemote(),
-                            monitors, listener));
-            if (r != null && r.booleanValue()) {
-                build.addAction(new ParametersAction(new ResourceMonitor.ResourceMonitorParameterValue("monitors", monitors)));
+            if (isAllMonitorsDisabled) {
+                params.add(new BooleanParameterValue("isAllMonitorsDisabled", true));
+                //build.addAction(new ParametersAction(new BooleanParameterValue("isAllMonitorsDisabled", true)));
+                LOGGER.info("WARNING: PerfCI won't start any monitor according to your configuration.");
+                listener.getLogger().println("WARNING: PerfCI won't start any monitor according to your configuration.");
+            } else {
+                Boolean r = launcher.getChannel().call(
+                        new StartMonitorsCallable(build.getProject().getName(),
+                                build.getId(), build.getWorkspace().getRemote(),
+                                monitors, listener));
+                if (r == null || !r.booleanValue()) {
+                    return false;
+                }
+                //build.addAction(new ParametersAction(new ResourceMonitor.ResourceMonitorParameterValue("monitors", monitors)));
+                params.add(new ResourceMonitor.ResourceMonitorParameterValue("monitors", monitors));
                 LOGGER.info("All monitors started.");
                 listener.getLogger().println("INFO: All monitors started.");
-                return true;
             }
-            return false;
+            ParametersAction paraAction = build.getAction(ParametersAction.class);
+            if (paraAction == null) {
+                build.addAction(new ParametersAction(params));
+            } else {
+                params.addAll(paraAction.getParameters());
+                build.replaceAction(new ParametersAction(params));
+            }
+            return true;
         } catch (Exception e) {
             RuntimeException re = new RuntimeException();
             re.initCause(e);

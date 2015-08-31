@@ -36,7 +36,7 @@ public class StopMonitorsBuilder extends Builder {
                            BuildListener listener) {
         ParametersAction paraAction = build.getAction(ParametersAction.class);
         if (paraAction == null) {
-            listener.getLogger().println("WARNING: No monitors to stop.");
+            listener.getLogger().println("[WARNING] No monitors to stop.");
             return true;
         }
         BooleanParameterValue isAllMonitorsDisabledParam = (BooleanParameterValue) paraAction.getParameter("isAllMonitorsDisabled");
@@ -47,7 +47,7 @@ public class StopMonitorsBuilder extends Builder {
         ResourceMonitor.ResourceMonitorParameterValue para = (ResourceMonitor.ResourceMonitorParameterValue) paraAction
                 .getParameter("monitors");
         if (para == null || para.getMonitors() == null || para.getMonitors().isEmpty()) {
-            listener.getLogger().println("WARNING: No monitors to stop.");
+            listener.getLogger().println("WARNING: monitors' information cannot be found.");
             return true;
         }
         try {
