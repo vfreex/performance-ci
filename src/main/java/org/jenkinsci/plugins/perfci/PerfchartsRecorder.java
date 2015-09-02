@@ -160,13 +160,7 @@ public class PerfchartsRecorder extends Recorder {
             LOGGER.warning("build.getResult(): " + build.getResult().toString());
             //return false;
         }
-        DescriptorImpl desc = getDescriptor();
-        TimeZone tz = timeZone != null && !timeZone.isEmpty() ? TimeZone
-                .getTimeZone(timeZone)
-                : (desc.getDefaultTimeZone() != null
-                && !desc.getDefaultTimeZone().isEmpty() ? TimeZone
-                .getTimeZone(desc.getDefaultTimeZone()) : TimeZone
-                .getDefault());
+
         FilePath workspace = build.getWorkspace();
         List<FilePath> remoteFiles = IOHelpers.locateFiles(workspace,
                 inputPattern);
@@ -177,9 +171,20 @@ public class PerfchartsRecorder extends Recorder {
         }
         LOGGER.info("Copying test results to master...");
         listener.getLogger().println("INFO: Copying test results to master...");
-        IOHelpers.copyToBuildDir(build, remoteFiles);
+        IOHelpers.copyToBuildDir(build, remoteFiles, listener);
         LOGGER.info("Copying test results complete.");
         listener.getLogger().println("INFO: Copying test results complete.");
+        //IOHelpers.copyToBuildDirectoryFromWorkspace(build, inputPattern);
+
+        DescriptorImpl desc = getDescriptor();
+        TimeZone tz = timeZone != null && !timeZone.isEmpty() ? TimeZone
+                .getTimeZone(timeZone)
+                : (desc.getDefaultTimeZone() != null
+                && !desc.getDefaultTimeZone().isEmpty() ? TimeZone
+                .getTimeZone(desc.getDefaultTimeZone()) : TimeZone
+                .getDefault());
+
+
         String buildPath = build.getRootDir().getAbsolutePath();
         String inputPath = IOHelpers.concatPathParts(buildPath,
                 Constants.INPUT_DIR_RELATIVE_PATH);

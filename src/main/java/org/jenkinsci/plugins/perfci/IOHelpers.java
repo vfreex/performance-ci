@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.perfci;
 
 import hudson.FilePath;
 import hudson.model.AbstractBuild;
+import hudson.model.BuildListener;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -74,15 +75,6 @@ public class IOHelpers {
 
     public static List<FilePath> locateFiles(FilePath workspace, String includes)
             throws IOException, InterruptedException {
-
-        // First use ant-style pattern
-        /*
-         * try { FilePath[] ret = workspace.list(includes); if (ret.length > 0)
-		 * { return Arrays.asList(ret); }
-		 */
-        // Agoley : Possible fix, if we specify more than one result file
-        // pattern
-        // try {
         String parts[] = includes.split("\\s*[;:,]+\\s*");
         List<FilePath> files = new ArrayList<FilePath>();
         for (String path : parts) {
@@ -91,51 +83,85 @@ public class IOHelpers {
                 files.addAll(Arrays.asList(ret));
             }
         }
-        // if (!files.isEmpty())
         return files;
-
-        // } catch (IOException e) {
-        // }
-
-        // Agoley: seems like this block doesn't work
-        // If it fails, do a legacy search
-        // ArrayList<FilePath> files = new ArrayList<FilePath>();
-        // String parts[] = includes.split("\\s*[;:,]+\\s*");
-        // for (String path : parts) {
-        // FilePath src = workspace.child(path);
-        // if (src.exists()) {
-        // if (src.isDirectory()) {
-        // files.addAll(Arrays.asList(src.list("**/*")));
-        // } else {
-        // files.add(src);
-        // }
-        // }
-        // }
-        // return files;
     }
 
-    public static List<File> copyToBuildDir(AbstractBuild<?, ?> build,
-                                            List<FilePath> files) throws IOException, InterruptedException {
-        List<File> localFiles = new ArrayList<File>();
+    public static void copyToBuildDir(AbstractBuild<?, ?> build,
+                                      List<FilePath> files, BuildListener listener) throws IOException, InterruptedException {
+        String localFilePathString = IOHelpers.concatPathParts(build.getRootDir().getAbsolutePath(), Constants.INPUT_DIR_RELATIVE_PATH);
+        FilePath localFilePath = new FilePath(new File(localFilePathString));
         for (FilePath src : files) {
             if (src.isDirectory()) {
-                LOGGER.warning("copyToMaster(): File '" + src.getName()
-                        + "' is a directory, not a Performance Report");
+                listener.getLogger().println("[WARNING] File '" + src.getName()
+                        + "' is a directory. We won't copy directories.");
                 continue;
             }
-            File localFile = new File(build.getRootDir(),
-                    Constants.INPUT_DIR_RELATIVE_PATH + File.separator
-                            + src.getName());
-            if (localFile.exists()) {
-                LOGGER.warning("copyToMaster(): File '"
-                        + src.getName()
-                        + "' has a duplicated file name, will replace the old one.");
+            FilePath zippedFile = new FilePath(new File(IOHelpers.concatPathParts(localFilePathString, src.getName() + ".zip")));
+            int _try;
+            for (_try = 1; _try <= 5; ++_try) {
+                try {
+                    listener.getLogger().println("[INFO] Zipping and copying file '" + src.getName() + "' to master...");
+                    src.zip(zippedFile);
+                    listener.getLogger().println("[INFO] Unzipping file '" + src.getName() + "' on master...");
+                    zippedFile.unzip(localFilePath);
+                    zippedFile.delete();
+                    listener.getLogger().println("[INFO] File '" + src.getName() + "' has been copied to build directory on master.");
+                    break;
+                } catch (IOException ex) {
+                    listener.getLogger().println("[WARNING] Copy '" + src.getName() + "' failed. Try again in " + _try + " minute.\n" + ex.toString());
+                    Thread.sleep(1000 * 60 * _try);
+                } catch (InterruptedException ex) {
+                    listener.getLogger().println("[WARNING] Copy '" + src.getName() + "' failed. Try again in " + _try + " minute.\n" + ex.toString());
+                    Thread.sleep(1000 * 60 * _try);
+                }
             }
-            src.copyTo(new FilePath(localFile));
-            localFiles.add(localFile);
+            if (_try > 5) {
+                throw new IOException("Copy file '" + src.getName() + "' failed.");
+            }
         }
-        return localFiles;
     }
+
+    /*public static void copyToBuildDirectoryFromWorkspace(AbstractBuild<?, ?> build, final String glob) throws IOException, InterruptedException {
+        final FilePath workspace = build.getWorkspace();
+        FilePath remoteTarFile = workspace.createTempFile("temp", "tar");
+        LOGGER.info("archiving file...");
+        if (0 != remoteTarFile.act(new FilePath.FileCallable<Integer>() {
+            private static final long serialVersionUID = 1;
+            @Override
+            public Integer invoke(File f, VirtualChannel channel) {
+                try {
+                    workspace.tar(new FileOutputStream(f), new DirScanner() {
+                        @Override
+                        public void scan(File file, FileVisitor fileVisitor) throws IOException {
+                        }
+                    });
+                    workspace.tar(new FileOutputStream(f), glob);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return 1;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    return 2;
+                }
+                return 0;
+            }
+            @Override
+            public void checkRoles(RoleChecker var1) throws SecurityException {
+            }
+        })) {
+            throw new IOException("cannot create archive file in workspace");
+        }
+        LOGGER.info("zipping and copying file to master...");
+        FilePath zippedFile = new FilePath(new File(build.getRootDir(),
+                Constants.INPUT_DIR_RELATIVE_PATH + File.separator
+                        + "temp.tar.gz"));
+        remoteTarFile.zip(zippedFile);
+        FilePath localPath = new FilePath(new File(build.getRootDir(),
+                Constants.INPUT_DIR_RELATIVE_PATH + File.separator));
+        LOGGER.info("unzipping...");
+        zippedFile.untar(localPath, FilePath.TarCompression.GZIP);
+        LOGGER.info("all files has been copied to master");
+    }*/
 
     public static void cleanInputPath(String inputPath) {
         File inputDir = new File(inputPath);

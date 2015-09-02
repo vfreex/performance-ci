@@ -13,11 +13,11 @@
 	</parent>
 	<groupId>org.jenkins-ci.plugins.perfci</groupId>
 	<artifactId>perfci</artifactId>
-	<version>0.2.0</version>
+	<version>0.3.0</version>
 	<packaging>hpi</packaging>
 
 	<name>Performance &amp; Resource Monitoring Plugin</name>
-	<url>http://vfreex.github.io/perfci/</url>
+	<url>http://example.com</url>
 	<licenses>
 		<license>
 			<name>AGPL-3.0</name>
