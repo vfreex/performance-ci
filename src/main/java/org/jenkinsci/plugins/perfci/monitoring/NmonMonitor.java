@@ -6,6 +6,7 @@ import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.Describable;
+import hudson.org.apache.tools.tar.TarInputStream;
 import hudson.remoting.Callable;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
@@ -18,6 +19,7 @@ import net.schmizz.sshj.transport.TransportException;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.InMemorySourceFile;
+import org.apache.tools.tar.TarEntry;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -28,6 +30,7 @@ import java.net.URL;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Sample {@link Builder}.
@@ -293,7 +296,11 @@ public class NmonMonitor implements ResourceMonitor,
     }
 
     private static String getOutputDir(String projectName, String buildID) {
-        return getProjectDir(projectName) + "/" + buildID + "/monitoring";
+        return getBuildDir(projectName, buildID) + "/monitoring";
+    }
+
+    private static String getBuildDir(String projectName, String buildID) {
+        return getProjectDir(projectName) + "/" + buildID;
     }
 
     private static String getProjectDir(String projectName) {
@@ -330,99 +337,60 @@ public class NmonMonitor implements ResourceMonitor,
                 listener.println("INFO: Cannot stop.");
                 return false;
             }
-            // {
-            // session = client.startSession();
-            // cmd = session
-            // .exec("sync && kill `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-            // + projectDir + "' | awk '{print $2}'`");
-            // cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-            // session.close();
-            // if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
-            // return false;
-            // session = client.startSession();
-            // cmd = session
-            // .exec("sleep 3 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-            // + projectDir + "' | awk '{print $2}'");
-            // cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-            // session.close();
-            // if (cmd.getExitStatus() != 0)
-            // return false;
-            // if (!IOUtils.readFully(cmd.getInputStream()).toString().trim()
-            // .isEmpty()) {
-            // LOGGER.info("Cannot stop, try 'kill -s INT'...");
-            // listener.println(
-            // "INFO: Cannot stop, try 'kill -s INT'...");
-            // session = client.startSession();
-            // cmd = session
-            // .exec("sync && kill -s INT `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-            // + projectDir + "' | awk '{print $2}'`");
-            // cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-            // session.close();
-            // if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1)
-            // return false;
-            // session = client.startSession();
-            // cmd = session
-            // .exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-            // + projectDir + "' | awk '{print $2}'");
-            // cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-            // session.close();
-            // if (cmd.getExitStatus() != 0)
-            // return false;
-            // if (!IOUtils.readFully(cmd.getInputStream()).toString()
-            // .trim().isEmpty()) {
-            // LOGGER.info("Cannot stop, try 'kill -s KILL'...");
-            // listener.println(
-            // "INFO: Cannot stop, try 'kill -s KILL'...");
-            // session = client.startSession();
-            // cmd = session
-            // .exec("sync && kill -s KILL `ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-            // + projectDir + "' | awk '{print $2}'`");
-            // cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-            // session.close();
-            // if (cmd.getExitStatus() != 0
-            // && cmd.getExitStatus() != 1)
-            // return false;
-            // session = client.startSession();
-            // cmd = session
-            // .exec("sleep 5 && ps -ef | grep /tmp/jenkins-perfci/bin/[n]mon | grep '"
-            // + projectDir + "' | awk '{print $2}'");
-            // cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
-            // session.close();
-            // if (cmd.getExitStatus() != 0)
-            // return false;
-            // if (!IOUtils.readFully(cmd.getInputStream()).toString()
-            // .trim().isEmpty()) {
-            // LOGGER.info("Oops! Still cannot stop. That was strange. Give up this try.");
-            // listener
-            // .println(
-            // "WARNING: Still cannot stop. That was strange. Give up this try.");
-            // return false;
-            // }
-            // }
-            // }
-            // }
+
             String relativePathForNMONFiles = outputPath == null
                     || outputPath.isEmpty() ? "monitoring" : outputPath;
             String pathOnAgent = relativePathForNMONFiles.startsWith("/")
                     || relativePathForNMONFiles.startsWith("file:") ? relativePathForNMONFiles
                     : workspace + File.separator + relativePathForNMONFiles;
-            LOGGER.info("Copy NMON logs to Jenkins agent '" + pathOnAgent
-                    + "'...");
-            listener.println(
-                    "INFO: Copy NMON logs to Jenkins agent '" + pathOnAgent
-                            + "'...");
-            new File(pathOnAgent).mkdirs();
-            String from = getOutputDir(projectName, buildID);
-            String to = pathOnAgent;
-            LOGGER.info("'monitored:" + from + "' ==> 'agent:" + to + "'...");
-            listener.println(
-                    "INFO: 'monitored:" + from + "' ==> 'agent:" + to + "'...");
 
-            client.newSCPFileTransfer().download(from, to);
-            LOGGER.info("'monitored:" + from + "' ==> 'agent:" + to + "' done");
+            new File(pathOnAgent).mkdirs();
+            String buildPath = getBuildDir(projectName, buildID);
+            String gzipFilePath = buildPath + "/monitoring.tar.gz";
+
+            listener.println("INFO: Compress monitoring results '" + pathOnAgent + "'...");
+            session = client.startSession();
+            cmd = session.exec("cd '" + buildPath + "/monitoring/' && tar -czf ../monitoring.tar.gz .");
+            cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
+            session.close();
+            if (cmd.getExitStatus() != 0) {
+                listener.println("ERROR: Compress failed.");
+                return false;
+            }
+
+            String to = pathOnAgent + "/monitoring.tar.gz";
             listener.println(
-                    "INFO: 'monitored:" + from + "' ==> 'agent:" + to
-                            + "' done");
+                    "INFO: Copying monitoring results into Jenkins workspace '" + pathOnAgent
+                            + "'...");
+            client.newSCPFileTransfer().download(gzipFilePath, to);
+            listener.println("INFO: Decompress...");
+            try {
+                File destGzipFile = new File(to);
+                TarInputStream tarIn = new TarInputStream(new GZIPInputStream(new FileInputStream(destGzipFile)));
+                TarEntry tarEnt;
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((tarEnt = tarIn.getNextEntry()) != null) {
+                    File file = tarEnt.getFile();
+                    File decompressedFile = new File(pathOnAgent, tarEnt.getName());
+                    if (!tarEnt.isDirectory()) {
+                        OutputStream out = new FileOutputStream(decompressedFile);
+                        while ((bytesRead = tarIn.read(buffer, 0, buffer.length)) > 0) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                        out.flush();
+                        out.close();
+                        listener.println("INFO: File '" + tarEnt.getName() + "' has been decompressed into workspace.");
+                    } else {
+                        decompressedFile.mkdirs();
+                        listener.println("INFO: Create directory '" + decompressedFile.getAbsolutePath() + "'.");
+                    }
+                }
+                destGzipFile.delete();
+            } catch (Exception ex) {
+                listener.println("ERROR: " + ex.toString());
+                return false;
+            }
             return true;
         } catch (UserAuthException ex) {
             throw ex;
