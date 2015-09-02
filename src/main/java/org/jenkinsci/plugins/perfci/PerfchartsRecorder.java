@@ -154,6 +154,7 @@ public class PerfchartsRecorder extends Recorder {
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
                            BuildListener listener) throws IOException, InterruptedException {
+        build.addAction(new PerfchartsBuildAction(build));
         if (build.getResult() != Result.SUCCESS) {
             // whenever the build failed or aborted, generate the performance report
             LOGGER.warning("build.getResult(): " + build.getResult().toString());
@@ -196,7 +197,6 @@ public class PerfchartsRecorder extends Recorder {
             LOGGER.severe("SEVERE: Perf&Res report generated failed.");
             return false;
         }
-        build.addAction(new PerfchartsBuildAction(build));
         listener.getLogger().println("INFO: Perf&Res report generated successfully.");
         LOGGER.info("Perf&Res report generated successfully.");
 
