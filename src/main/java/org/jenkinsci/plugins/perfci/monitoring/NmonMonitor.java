@@ -27,6 +27,7 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.*;
 import java.net.URL;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -358,9 +359,9 @@ public class NmonMonitor implements ResourceMonitor,
                 return false;
             }
 
-            String to = pathOnAgent + "/monitoring.tar.gz";
+            String to = pathOnAgent + "/monitoring-" + UUID.randomUUID().toString() + ".tar.gz";
             listener.println(
-                    "INFO: Copying monitoring results into Jenkins workspace '" + pathOnAgent
+                    "INFO: Copying monitoring results into Jenkins workspace '" + to
                             + "'...");
             client.newSCPFileTransfer().download(gzipFilePath, to);
             listener.println("INFO: Decompress...");

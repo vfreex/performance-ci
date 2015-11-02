@@ -318,7 +318,7 @@ public class ZabbixMonitor implements ResourceMonitor,
                         + "'...");
         new File(pathOnAgent).mkdirs();
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-d h:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-d h:mm:ss", Locale.ENGLISH);
         sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
         arguments.add("-a");
         arguments.add(apiUrl);
