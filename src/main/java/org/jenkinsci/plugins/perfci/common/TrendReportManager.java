@@ -32,7 +32,7 @@ public class TrendReportManager {
     }
 
     public static String getTrendDataJSPath(AbstractProject<?, ?> project, String reportID) {
-        return getTrendDirPath(project, reportID) + File.separator + "tmp" + File.separator +
+        return getTrendDirPath(project, reportID) + File.separator + "data" + File.separator +
                 "data.js";
     }
 

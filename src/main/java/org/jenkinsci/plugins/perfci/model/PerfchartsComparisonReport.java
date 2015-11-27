@@ -55,10 +55,10 @@ public class PerfchartsComparisonReport {
         CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT);
         csvPrinter.printRecord("SOURCE", sourceBuild.number, sourceBuild.getDisplayName(), sourceBuildPath + File.separator +
                 Constants.OUTPUT_DIR_RELATIVE_PATH + File.separator +
-                "tmp/subreports/Performance.json");
+                "data/subreports/Performance.json");
         csvPrinter.printRecord("DEST", destBuild.number, destBuild.getDisplayName(), destBuildPath + File.separator +
                 Constants.OUTPUT_DIR_RELATIVE_PATH + File.separator +
-                "tmp/subreports/Performance.json");
+                "data/subreports/Performance.json");
         csvPrinter.flush();
         csvPrinter.close();
         String outputPath = inputPath + File.separator + "report";
@@ -87,7 +87,7 @@ public class PerfchartsComparisonReport {
                 destBuild.number;
         String inputFilePath = inputPath + File.separator + inputFileName;
         String outputPath = inputPath + File.separator + "report";
-        String dataFilePath = outputPath + File.separator + "tmp" + File.separator +
+        String dataFilePath = outputPath + File.separator + "data" + File.separator +
                 "data.js";
         File inputFile = new File(inputFilePath);
         File dataFile = new File(dataFilePath);

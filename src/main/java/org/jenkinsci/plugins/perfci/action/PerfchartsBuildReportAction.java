@@ -48,7 +48,7 @@ public class PerfchartsBuildReportAction implements Action {
         String buildPath = build.getRootDir().getAbsolutePath();
         String outputPath = buildPath+ File.separator +
                 Constants.OUTPUT_DIR_RELATIVE_PATH;
-        String dataFile = outputPath+ File.separator +"tmp"+ File.separator +
+        String dataFile = outputPath+ File.separator +"data"+ File.separator +
                 "data.js";
         response.setContentType("text/javascript");
         try {

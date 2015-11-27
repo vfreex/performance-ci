@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 public class PerfchartsTrendReportAction implements Action/*, StaplerProxy*/ {
-    private static final String ACTION_NAME = "Performance Trend Report";
+    private static final String ACTION_NAME = "Performance Trend";
     private static final String ACTION_PATH = "performance-trend";
     private static final String ACTION_ICON = "graph.gif";
     private static final Logger LOGGER = Logger
