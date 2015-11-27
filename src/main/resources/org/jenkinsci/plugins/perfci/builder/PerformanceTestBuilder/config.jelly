@@ -1,0 +1,50 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core"
+         xmlns:f="/lib/form">
+    <f:entry title="Disable all" field="disabled">
+        <f:checkbox/>
+    </f:entry>
+    <f:advanced>
+        <f:entry title="Result directory" field="resultDir">
+            <f:textbox default="perf-test/"/>
+        </f:entry>
+        <f:entry title="Keep data for how many builds" field="keepBuilds">
+            <f:textbox default="5"/>
+        </f:entry>
+    </f:advanced>
+
+    <f:entry title="Performance test tasks" field="performanceTesters">
+        <f:hetero-list name="performanceTesters"
+                       descriptors="${descriptor.performanceTesterDescriptors}"
+                       items="${instance.performanceTesters}"
+                       hasHeader="true"
+                       addCaption="add a new performance test task"
+        />
+    </f:entry>
+
+    <f:entry title="Resource monitors" field="resourceMonitors">
+        <f:hetero-list name="resourceMonitors"
+                       descriptors="${descriptor.resourceMonitorDescriptors}"
+                       items="${instance.resourceMonitors}"
+                       hasHeader="true"
+                       addCaption="add a new resource monitor"
+        />
+    </f:entry>
+
+    <f:section title="Report Generation">
+        <f:entry title="Disable" field="reportDisabled">
+            <f:checkbox/>
+        </f:entry>
+        <f:entry title="Fallback timezone" field="fallbackTimezone">
+            <f:textbox default="UTC"/>
+        </f:entry>
+        <f:advanced>
+            <f:entry title="Excluded transactions" field="excludedTransactionPattern" description="A regular expression which specifying excluded transactions for average response time and TPS calculation. ex: ping\.html">
+                <f:textbox />
+            </f:entry>
+            <f:entry title="Perfcharts command" field="perfchartsCommand">
+                <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw 10.73.3.1:5000/perfci-agent cgt-perf" />
+            </f:entry>
+        </f:advanced>
+    </f:section>
+</j:jelly>

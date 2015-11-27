@@ -1,0 +1,86 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler"
+         xmlns:l="/lib/layout">
+    <l:layout title="perfcharts-trend-report-layout">
+        <st:include it="${it.project}" page="sidepanel.jelly"/>
+        <l:main-panel>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/jquery-1.11.1.min.js"></script>
+            <script type="text/javascript">
+                jQuery.noConflict();
+            </script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/flot/jquery.flot.min.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/flot/jquery.flot.time.min.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/flot/jquery.flot.categories.min.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/flot/jquery.flot.selection.min.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/flot/jquery.flot.axislabels.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/flot/jquery.flot.crosshair.min.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/jquery.tablesorter.min.js"></script>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/lib/jquery.stickytableheaders.min.js"></script>
+            <script type="text/javascript" src="${resURL}/plugin/perfci/js/perfcharts.js"></script>
+            <link rel="stylesheet" type="text/css"
+                  href="${resURL}/plugin/perfci/css/tablesorter/theme.default.css"/>
+            <link rel="stylesheet" type="text/css"
+                  href="${resURL}/plugin/perfci/css/default-style.css"/>
+
+            <script type="text/javascript" src="${it.dataJSPath}">
+            </script>
+            <style type="text/css">
+                #report_container, #report_container * {
+                box-sizing:content-box;
+                }
+                .tag_error_msg_error {
+                color: red;
+                }
+                .tag_error_msg_fine {
+                color:
+                green;
+                }
+            </style>
+            <script type="text/javascript"
+                    src="${resURL}/plugin/perfci/js/PerfchartsTrendReport.js"></script>
+            <div id="report_container" style="width: auto; height:auto;">
+                <div>
+                    <a href="monoReport" target="_blank">open in a separated page</a>
+                    <fieldset>
+                        <label for="txt_builds">Included builds</label>
+                        <input id="txt_builds" type="text" name="builds" value="${it.buildIDs}"
+                               placeholder="ex. 1,3,10-16,7,50-48,99" title="A comma separated list. Leaving empty means all builds are included."/>
+                        <input id="btn_generate_trend" type="button" value="generate"/>
+                        <input id="btn_refresh_trend" type="button" value="refresh"/>
+                        <span id="tag_error_msg" class="error_msg"></span>
+                    </fieldset>
+                </div>
+                <header>
+                    <h1>Loading...</h1>
+                    <nav>
+                        <ul id="report_nav">
+                        </ul>
+                    </nav>
+                </header>
+                <section id="content">
+                    <hr/>
+                    <div class="report">
+                        <h2 class="report_title"></h2>
+                        <div class="charts"></div>
+                    </div>
+                    <div class="control_pad"></div>
+                    <hr/>
+                </section>
+                <footer>
+                    <p>
+                        Powered by
+                        <a href="http://vfreex.github.io/perfcharts/">Perfcharts</a>
+                    </p>
+                </footer>
+            </div>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

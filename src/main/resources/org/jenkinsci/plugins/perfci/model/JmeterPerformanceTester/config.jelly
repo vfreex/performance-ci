@@ -1,0 +1,21 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core"
+         xmlns:f="/lib/form">
+    <f:entry title="Disable" field="disabled">
+        <f:checkbox />
+    </f:entry>
+    <f:entry title="include JMX files" field="jmxIncludingPattern">
+        <f:textbox default="**/*.jmx" />
+    </f:entry>
+    <f:entry title="exclude JMX files" field="jmxExcludingPattern">
+        <f:textbox default="" />
+    </f:entry>
+    <f:advanced>
+        <f:entry title="Jmeter command" field="jmeterCommand">
+            <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw 10.73.3.1:5000/perfci-agent jmeter" />
+        </f:entry>
+        <f:entry title="Jmeter additional arguments" field="jmeterArgs">
+            <f:textbox default="-Djmeter.save.saveservice.output_format=xml" />
+        </f:entry>
+    </f:advanced>
+</j:jelly>

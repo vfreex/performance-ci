@@ -1,0 +1,27 @@
+#!/bin/bash
+usage() {
+	echo 'A simple tool for CPU load monitoring (by Rayson Zhu)'
+	echo `basename "$0"` '[-t INTERVAL] [-d DIRECTORY] [-?]'
+	echo '	-t INTERVAL	monitoring interval'
+	echo '	-d DIRECTORY	output directory'
+	echo '	-?		show this usage'
+}
+interval=1
+output_dir=.
+while getopts t:d:? opt; do
+case $opt in
+t) interval=$OPTARG;;
+d) output_dir=$OPTARG;;
+?|*) usage; exit 1;;
+esac
+done
+shift $[$OPTIND - 1]
+
+output_file_name=`hostname`_`date +%y%m%d_%H%M%S`.load
+output_path=$output_dir/$output_file_name
+
+while true; do
+echo `date +%s`,`cat /proc/loadavg | awk '{print $1,$2,$3}'`,`grep 'processor' /proc/cpuinfo | sort -u | wc -l` >> "$output_path"
+sleep "$interval"
+done
+

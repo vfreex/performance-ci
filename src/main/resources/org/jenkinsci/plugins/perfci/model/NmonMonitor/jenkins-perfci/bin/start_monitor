@@ -1,0 +1,47 @@
+#!/bin/bash
+# Resource monitor utility for PerfCI
+# Author: Rayson Zhu <yuxzhu@redhat.com>
+
+show_usage() {
+	echo `basename "$0"` '<PROJECT>' '<BUILD>' '<INTERVAL>' >&2
+}
+
+if [ $# -lt 3 ]; then
+	show_usage
+	exit 1
+fi
+project_name=$1
+build_id=$2
+interval=$3
+cycle_time=`expr 24 \* 3600 \* 7 \* 1000 / "$interval"`
+
+BASE_DIR=$(cd "$(dirname -- "$(readlink -e -- "$0")")"; cd ..; pwd)
+bin_dir=$BASE_DIR/bin
+jobs_dir=$BASE_DIR/jobs
+proj_dir=$jobs_dir/$project_name
+build_dir=$proj_dir/$build_id
+output_dir=$build_dir/monitoring
+nmon_pid_file=$proj_dir/nmon.pid
+cpuload_monitor_pid_file=$proj_dir/cpuload_monitor.pid
+
+if ! mkdir -p "$output_dir"; then
+	echo 'Cannot create output directory:' "$output_dir"   >&2
+	exit 1
+fi
+
+if [ -f "$nmon_pid_file" ] || [ -f "$cpuload_monitor_pid_file" ]; then
+	echo 'Monitors for this project has been started. Stop it first.'   >&2
+	"$bin_dir"/stop_monitor "$project_name"
+fi
+
+if ! ("$bin_dir"/nmon -f -t -p -s "$interval" -c "$cycle_time" -m "$output_dir" > "$nmon_pid_file"); then
+	echo 'Cannot start NMON deamon.'   >&2
+	exit 1
+else
+	echo 'NMON deamon started. As default, monitoring will run less 7 days.' >&2
+fi
+
+if ! (nohup "$bin_dir"/cpuload_monitor -t "$interval" -d "$output_dir" >/dev/null 2>&1 & echo $! > "$cpuload_monitor_pid_file"); then
+	echo 'Cannot start cpuload_monitor deamon.'   >&2
+	exit 1
+fi

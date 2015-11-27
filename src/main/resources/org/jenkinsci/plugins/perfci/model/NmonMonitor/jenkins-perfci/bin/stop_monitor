@@ -1,0 +1,61 @@
+#!/bin/bash
+# Resource monitor utility for PerfCI
+# Author: Rayson Zhu <yuxzhu@redhat.com>
+
+show_usage() {
+	echo `basename "$0"` '<PROJECT>' >&2
+}
+
+if [ $# -lt 1 ]; then
+	show_usage
+	exit 1
+fi
+project_name=$1
+build_id=$2
+
+BASE_DIR=$(cd "$(dirname -- "$(readlink -e -- "$0")")"; cd ..; pwd)
+bin_dir=$BASE_DIR/bin
+jobs_dir=$BASE_DIR/jobs
+proj_dir=$jobs_dir/$project_name
+build_dir=$proj_dir/$build_id
+output_dir=$build_dir/monitoring
+nmon_pid_file=$proj_dir/nmon.pid
+cpuload_monitor_pid_file=$proj_dir/cpuload_monitor.pid
+
+# try normal killing
+if [ -f "$cpuload_monitor_pid_file" ]; then
+	if ! kill -KILL `cat "$cpuload_monitor_pid_file"`; then # use force KILL here on purpose
+		echo 'Cannot stop cpuload_monitor deamon.'   >&2
+	else
+		rm -f -- "$cpuload_monitor_pid_file"
+		echo 'cpuload_monitor stoped.'   >&2
+	fi
+fi
+
+if [ -f "$nmon_pid_file" ]; then
+	if ! kill -QUIT `cat "$nmon_pid_file"`; then
+		echo 'Cannot stop NMON deamon.'   >&2
+	else
+		rm -f -- "$nmon_pid_file"
+		echo 'NMON stoped.'   >&2
+	fi
+fi
+
+# try force killing
+if [ -f "$cpuload_monitor_pid_file" ]; then
+	if ! kill -KILL `cat "$cpuload_monitor_pid_file"`; then
+		echo 'Cannot force stop cpuload_monitor deamon.'   >&2
+	else
+		echo 'CPU load monitor stoped.'   >&2
+	fi
+fi
+rm -f -- "$cpuload_monitor_pid_file"
+
+if [ -f "$nmon_pid_file" ]; then
+	if ! kill -KILL `cat "$nmon_pid_file"`; then
+		echo 'Cannot force stop NMON deamon.'   >&2
+	else
+		echo 'NMON stoped.'   >&2
+	fi
+fi
+rm -f -- "$nmon_pid_file"
