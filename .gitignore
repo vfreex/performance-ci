@@ -1,8 +1,4 @@
-*~
-*.bak
-target/
-testcode/
-/build_dir/
-/bin/
+/.*/
+/target/
+/work/
 *.iml
-/.idea/
