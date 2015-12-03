@@ -14,6 +14,7 @@ import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.perfci.action.PerfchartsBuildReportAction;
 import org.jenkinsci.plugins.perfci.action.PerfchartsTrendReportAction;
 import org.jenkinsci.plugins.perfci.common.*;
+import org.jenkinsci.plugins.perfci.common.TaskQueue;
 import org.jenkinsci.plugins.perfci.executor.PerfchartsBuildReportExecutor;
 import org.jenkinsci.plugins.perfci.model.PerformanceTester;
 import org.jenkinsci.plugins.perfci.model.ResourceMonitor;
@@ -25,9 +26,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by vfreex on 11/23/15.
@@ -125,20 +123,10 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
         EnvVars env = build.getEnvironment(listener);
         final String perfchartsCommand = env.expand(this.perfchartsCommand);
 
-/*        try {
-            // run on Jenkins slave
-            launcher.getChannel().call(new Callable<Object, Throwable>() {
-                @Override
-                public void checkRoles(RoleChecker checker) throws SecurityException {
-                }
-
-                @Override
-                public Object call() throws Throwable {*/
-        ExecutorService executor = Executors.newCachedThreadPool();
-
         // start resource monitors
+        TaskQueue startMonitorTaskQueue = new TaskQueue();
         for (final ResourceMonitor resourceMonitor : resourceMonitors) {
-            executor.execute(new Runnable() {
+            startMonitorTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     if (resourceMonitor instanceof BaseDirectoryRelocatable) {
@@ -157,19 +145,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
             });
         }
         listener.getLogger().println("INFO: Wait at most 10 minutes for resource monitors to start");
-        executor.shutdown();
-        try {
-            // Wait a while for existing tasks to terminate
-            if (!executor.awaitTermination(10, TimeUnit.MINUTES)) {
-                executor.shutdownNow(); // Cancel currently executing tasks
-            }
-        } catch (InterruptedException ie) {
-            // (Re-)Cancel if current thread also interrupted
-            executor.shutdownNow();
-            // Preserve interrupt status
-            Thread.currentThread().interrupt();
-        }
-
+        startMonitorTaskQueue.runAll(1000 * 60 * 10);
         // start performance test executors
         for (PerformanceTester performanceTester : performanceTesters) {
             if (performanceTester instanceof LogDirectoryRelocatable) {
@@ -183,11 +159,11 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
             }
             performanceTester.run(build, launcher, listener);
         }
-        executor = Executors.newCachedThreadPool();
 
         // stop resource monitors and collect test results
+        TaskQueue stopMonitorTaskQueue = new TaskQueue();
         for (final ResourceMonitor resourceMonitor : resourceMonitors) {
-            executor.execute(new Runnable() {
+            stopMonitorTaskQueue.enqueue(new Runnable() {
                 @Override
                 public void run() {
                     if (resourceMonitor instanceof BaseDirectoryRelocatable) {
@@ -203,18 +179,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
             });
         }
         listener.getLogger().println("INFO: Waiting at most 6 hours for resource monitors to stop and complete data transfer...");
-        executor.shutdown();
-        try {
-            // Wait for existing tasks to terminate
-            if (!executor.awaitTermination(6, TimeUnit.HOURS)) {
-                executor.shutdownNow(); // Cancel currently executing tasks
-            }
-        } catch (InterruptedException ie) {
-            // (Re-)Cancel if current thread also interrupted
-            executor.shutdownNow();
-            // Preserve interrupt status
-            Thread.currentThread().interrupt();
-        }
+        stopMonitorTaskQueue.runAll(1000 * 60 * 60 * 6);
 
         if (reportDisabled) {
             listener.getLogger().println("WARNING: No performance test reports will be generated according to your configuration.");
