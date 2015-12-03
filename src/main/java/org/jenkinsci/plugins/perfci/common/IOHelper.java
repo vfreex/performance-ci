@@ -18,22 +18,22 @@ import java.util.Map;
  * Created by vfreex on 11/26/15.
  */
 public class IOHelper {
-    public static List<FilePath> locateFiles(FilePath basePath, String includes)
-            throws IOException, InterruptedException {
-        String parts[] = includes.split("\\s*[;:,]+\\s*");
-        // Use map to discard duplicated matched files
-        Map<String, FilePath> fileMap = new HashMap<String, FilePath>();
-        for (String path : parts) {
-            for (FilePath filePath : basePath.list(path)) {
-                fileMap.put(filePath.getRemote(), filePath);
-            }
-        }
-        List<FilePath> files = new ArrayList<>(fileMap.size());
-        for (String fileName : fileMap.keySet()) {
-            files.add(fileMap.get(fileName));
-        }
-        return files;
-    }
+//    public static List<FilePath> locateFiles(FilePath basePath, String includes)
+//            throws IOException, InterruptedException {
+//        String parts[] = includes.split("\\s*[;:,]+\\s*");
+//        // Use map to discard duplicated matched files
+//        Map<String, FilePath> fileMap = new HashMap<String, FilePath>();
+//        for (String path : parts) {
+//            for (FilePath filePath : basePath.list(path)) {
+//                fileMap.put(filePath.getRemote(), filePath);
+//            }
+//        }
+//        List<FilePath> files = new ArrayList<>(fileMap.size());
+//        for (String fileName : fileMap.keySet()) {
+//            files.add(fileMap.get(fileName));
+//        }
+//        return files;
+//    }
 
     public static void copySteam(InputStream in, OutputStream out)
             throws IOException {

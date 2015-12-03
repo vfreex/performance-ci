@@ -84,7 +84,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         }
     }
 
-    private transient String baseDirectory;
+    private String baseDirectory;
 
     private boolean isDisabled;
     private final String host;
@@ -129,9 +129,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         return interval;
     }
 
-    private boolean tryStart(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
-        String projectName = build.getProject().getName();
-        String buildID = Integer.toString(build.number);
+    private boolean tryStart(String projectName, int buildId, BuildListener listener) throws IOException, InterruptedException {
         SSHClient client = new SSHClient();
         if (fingerprint != null && !fingerprint.isEmpty())
             client.addHostKeyVerifier(fingerprint);
@@ -204,11 +202,11 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             }
             listener.getLogger().println(
                     "INFO: Starting NMON & cpuload_monitor deamons...");
-            String remoteLogDir = getOutputDir(projectName, build.number);
+            String remoteLogDir = getOutputDir(projectName, buildId);
             session = client.startSession();
             int intervalValue = Integer.parseInt(interval);
             cmd = session.exec("/tmp/jenkins-perfci/bin/start_monitor '"
-                    + projectName + "' '" + buildID + "' " + intervalValue);
+                    + projectName + "' '" + buildId + "' " + intervalValue);
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
             session.close();
             if (cmd.getExitStatus() != 0) {
@@ -234,9 +232,8 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         return "/tmp/jenkins-perfci/jobs/" + projectName;
     }
 
-    private boolean tryStop(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
-        String projectName = build.getProject().getName();
-        String projectDir = getProjectDir(projectName);
+    private boolean tryStop(String projectName, int buildId, String workspaceDir, BuildListener listener) throws IOException, InterruptedException {
+        //String projectDir = getProjectDir(projectName);
         SSHClient client = new SSHClient();
         if (fingerprint != null && !fingerprint.isEmpty())
             client.addHostKeyVerifier(fingerprint);
@@ -266,13 +263,15 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
 
             String resultDir = this.getBaseDirectory() == null || this.getBaseDirectory().isEmpty() ? "" : this.getBaseDirectory();
 
-            String pathOnAgent = build.getWorkspace().getRemote() + File.separator + resultDir;
+            String pathOnAgent = workspaceDir + File.separator + resultDir;
 
-            new File(pathOnAgent).mkdirs();
-            String buildPath = getBuildDir(projectName, build.number);
+            if (new File(pathOnAgent).mkdirs()) {
+                listener.getLogger().println("INFO: Create directory '" + pathOnAgent + "' in workspace.");
+            }
+            String buildPath = getBuildDir(projectName, buildId);
             String gzipFilePath = buildPath + "/monitoring.tar.gz";
 
-            listener.getLogger().println("INFO: Compress monitoring results '" + pathOnAgent + "'...");
+            listener.getLogger().println("INFO: Compress monitoring results '" + buildPath + "/monitoring'...");
             session = client.startSession();
             cmd = session.exec("cd '" + buildPath + "/monitoring/' && tar -czf ../monitoring.tar.gz .");
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
@@ -284,8 +283,8 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
 
             String to = pathOnAgent + "/monitoring-" + UUID.randomUUID().toString() + ".tar.gz";
             listener.getLogger().println(
-                    "INFO: Copying monitoring results into Jenkins workspace '" + to
-                            + "'...");
+                    "INFO: Copying monitoring results into Jenkins workspace ('" + to
+                            + "')...");
             client.newSCPFileTransfer().download(gzipFilePath, to);
             listener.getLogger().println("INFO: Decompress...");
             try {
@@ -330,53 +329,84 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
     }
 
     @Override
-    public boolean start(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+    public void start(final AbstractBuild<?, ?> build, Launcher launcher, final BuildListener listener) throws IOException, InterruptedException {
         if (isDisabled) {
             listener.getLogger().println("WARNING: PerfCI will not start NMON monitor (" + this.host + ") according to your configuration.");
-            return true;
+            return;
         }
-        try {
-            for (int i = 1; i <= MAX_TRIES; ++i) {
-                listener.getLogger().println(
-                        "INFO: Starting NMON monitor... (try " + i + " of "
-                                + MAX_TRIES + ")");
-                if (tryStart(build, launcher, listener)) {
-                    listener.getLogger().println("INFO: NMON monitor started.");
-                    return true;
-                }
-                listener.getLogger().println(
-                        "WARNING: Fail to start NMON monitor.");
+        final String projectName = build.getProject().getName();
+        final int buildId = build.number;
+//        for (int i = 1; i <= MAX_TRIES; ++i) {
+//        listener.getLogger().println(
+//                "INFO: Starting NMON monitor... (try " + i + " of "
+//                        + MAX_TRIES + ")");
+        launcher.getChannel().call(new hudson.remoting.Callable<Object, IOException>() {
+            @Override
+            public void checkRoles(RoleChecker checker) throws SecurityException {
             }
-        } catch (Exception ex) {
-            listener.getLogger().println(
-                    "ERROR: Fail to start NMON monitor: " + ex.toString());
-        }
-        listener.getLogger().println(
-                "ERROR: Cannot start NMON monitor. Give up.");
-        return false;
+
+            @Override
+            public Object call() throws IOException {
+                try {
+                    listener.getLogger().println("INFO: Starting NMON monitor...");
+                    if (tryStart(projectName, buildId, listener)) {
+                        listener.getLogger().println("INFO: NMON monitor started.");
+                        return null;
+                    } else
+                        throw new IOException("ERROR: External program returned with a non-zero code.");
+                } catch (InterruptedException e) {
+                    listener.getLogger().println(
+                            "ERROR: Failed to start NMON monitor.");
+                    throw new IOException(e);
+                }
+            }
+        });
+//        }
+//        listener.getLogger().println(
+//                "ERROR: Cannot start NMON monitor. Give up.");
     }
 
     @Override
-    public boolean stop(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+    public void stop(final AbstractBuild<?, ?> build, final Launcher launcher, final BuildListener listener) throws IOException, InterruptedException {
         if (isDisabled) {
             listener.getLogger().println("WARNING: PerfCI will not stop NMON monitor (" + this.host + ") according to your configuration.");
-            return true;
+            return;
         }
-        try {
-            for (int i = 1; i <= MAX_TRIES; ++i) {
-                listener.getLogger().println("INFO: Stopping NMON monitor... (try " + i + " of "
-                        + MAX_TRIES + ")");
-                if (tryStop(build, launcher, listener)) {
-                    listener.getLogger().println("INFO: NMON monitor stopped.");
-                    return true;
-                }
-                listener.getLogger().println("WARNING: Fail to stop NMON monitor.");
+//        try {
+//            for (int i = 1; i <= MAX_TRIES; ++i) {
+//        listener.getLogger().println("INFO: Stopping NMON monitor... (try " + i + " of "
+//                + MAX_TRIES + ")");
+        final String projectName = build.getProject().getName();
+        final int buildId = build.number;
+        final String workspaceDir = build.getWorkspace().getRemote();
+        //listener.getLogger().println("INFO: Stopping NMON monitor...");
+        launcher.getChannel().call(new Callable<Object, IOException>() {
+            @Override
+            public void checkRoles(RoleChecker checker) throws SecurityException {
             }
-        } catch (UserAuthException ex) {
-            listener.getLogger().println("ERROR: Authentication error.");
-        }
-        listener.getLogger().println("ERROR: Cannot stop NMON monitor. Give up.");
-        return false;
+
+            @Override
+            public Object call() throws IOException {
+                try {
+                    listener.getLogger().println("INFO: Stopping NMON monitor...");
+                    if (tryStop(projectName, buildId, workspaceDir, listener)) {
+                        listener.getLogger().println("INFO: NMON monitor stopped.");
+                        return null;
+                    } else
+                        throw new IOException("ERROR: External program returned with a non-zero code.");
+                } catch (InterruptedException e) {
+                    listener.getLogger().println(
+                            "ERROR: Failed to stop NMON monitor.");
+                    throw new IOException(e);
+                }
+            }
+        });
+//                listener.getLogger().println("WARNING: Fail to stop NMON monitor.");
+//            }
+//        } catch (UserAuthException ex) {
+//            listener.getLogger().println("ERROR: Authentication error.");
+//        }
+//        listener.getLogger().println("ERROR: Cannot stop NMON monitor. Give up.");
     }
 
     @Override

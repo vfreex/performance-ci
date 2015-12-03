@@ -16,9 +16,9 @@ import java.io.Serializable;
 
 public abstract class ResourceMonitor implements Describable<ResourceMonitor>, Serializable, ExtensionPoint {
 
-    public abstract boolean start(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException;
+    public abstract void start(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException;
 
-    public abstract boolean stop(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException;
+    public abstract void stop(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException;
 
     public abstract boolean isEnabled();
 

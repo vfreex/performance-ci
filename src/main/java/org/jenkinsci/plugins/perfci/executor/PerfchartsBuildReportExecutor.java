@@ -5,6 +5,7 @@ import org.jenkinsci.plugins.perfci.common.IOHelper;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,7 +14,7 @@ import java.util.TimeZone;
 /**
  * Created by vfreex on 11/25/15.
  */
-public class PerfchartsBuildReportExecutor extends AbstractExternalProgramExecutor {
+public class PerfchartsBuildReportExecutor extends AbstractExternalProgramExecutor implements Serializable {
     private String cgtCommand;
     private TimeZone timeZone;
     private String inputDir;

@@ -7,17 +7,13 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildListener;
-import hudson.remoting.Callable;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.perfci.action.PerfchartsBuildReportAction;
 import org.jenkinsci.plugins.perfci.action.PerfchartsTrendReportAction;
-import org.jenkinsci.plugins.perfci.common.BaseDirectoryRelocatable;
-import org.jenkinsci.plugins.perfci.common.Constants;
-import org.jenkinsci.plugins.perfci.common.IOHelper;
-import org.jenkinsci.plugins.perfci.common.LogDirectoryRelocatable;
+import org.jenkinsci.plugins.perfci.common.*;
 import org.jenkinsci.plugins.perfci.executor.PerfchartsBuildReportExecutor;
 import org.jenkinsci.plugins.perfci.model.PerformanceTester;
 import org.jenkinsci.plugins.perfci.model.ResourceMonitor;
@@ -27,6 +23,7 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by vfreex on 11/23/15.
  */
-public class PerformanceTestBuilder extends Builder {
+public class PerformanceTestBuilder extends Builder implements Serializable {
     /**
      * Descriptor for {@link PerformanceTestBuilder}. Used as a singleton.
      * The class is marked as public so that it can be accessed from views.
@@ -120,6 +117,7 @@ public class PerformanceTestBuilder extends Builder {
         }
         final TimeZone fallbackTimezoneObj = TimeZone.getTimeZone(fallbackTimezone);
         // `buildDir` here is the directory where we put all test results and logs for this build. It is a relative path to Jenkins workspace.
+        final String resultDir = this.resultDir == null ? "" : this.resultDir;
         final String buildDir = resultDir + File.separator + "builds" + File.separator + +build.number;
         final String baseDirForBuild = buildDir + File.separator + "rawdata";
         final String logDirForBuild = buildDir + File.separator + "log";
@@ -127,7 +125,7 @@ public class PerformanceTestBuilder extends Builder {
         EnvVars env = build.getEnvironment(listener);
         final String perfchartsCommand = env.expand(this.perfchartsCommand);
 
-        try {
+/*        try {
             // run on Jenkins slave
             launcher.getChannel().call(new Callable<Object, Throwable>() {
                 @Override
@@ -135,117 +133,130 @@ public class PerformanceTestBuilder extends Builder {
                 }
 
                 @Override
-                public Object call() throws Throwable {
-                    ExecutorService executor = Executors.newCachedThreadPool();
+                public Object call() throws Throwable {*/
+        ExecutorService executor = Executors.newCachedThreadPool();
 
-                    // start resource monitors
-                    for (final ResourceMonitor resourceMonitor : resourceMonitors) {
-                        executor.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (resourceMonitor instanceof BaseDirectoryRelocatable) {
-                                    ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
-                                }
-                                try {
-                                    resourceMonitor.start(build, launcher, listener);
-                                } catch (Exception ex) {
-                                    Thread t = Thread.currentThread();
-                                    t.getUncaughtExceptionHandler().uncaughtException(t, ex);
-                                }
-                            }
-                        });
+        // start resource monitors
+        for (final ResourceMonitor resourceMonitor : resourceMonitors) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    if (resourceMonitor instanceof BaseDirectoryRelocatable) {
+                        ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
                     }
-                    listener.getLogger().println("INFO: Wait at most 10 minutes for resource monitors to start");
-                    executor.shutdown();
+                    if (resourceMonitor instanceof ResultDirectoryRelocatable) {
+                        ((ResultDirectoryRelocatable) resourceMonitor).setResultDirectory(resultDir);
+                    }
                     try {
-                        // Wait a while for existing tasks to terminate
-                        if (!executor.awaitTermination(10, TimeUnit.MINUTES)) {
-                            executor.shutdownNow(); // Cancel currently executing tasks
-                        }
-                    } catch (InterruptedException ie) {
-                        // (Re-)Cancel if current thread also interrupted
-                        executor.shutdownNow();
-                        // Preserve interrupt status
-                        Thread.currentThread().interrupt();
+                        resourceMonitor.start(build, launcher, listener);
+                    } catch (Exception ex) {
+                        Thread t = Thread.currentThread();
+                        t.getUncaughtExceptionHandler().uncaughtException(t, ex);
                     }
+                }
+            });
+        }
+        listener.getLogger().println("INFO: Wait at most 10 minutes for resource monitors to start");
+        executor.shutdown();
+        try {
+            // Wait a while for existing tasks to terminate
+            if (!executor.awaitTermination(10, TimeUnit.MINUTES)) {
+                executor.shutdownNow(); // Cancel currently executing tasks
+            }
+        } catch (InterruptedException ie) {
+            // (Re-)Cancel if current thread also interrupted
+            executor.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
+        }
 
-                    // start performance test executors
-                    for (PerformanceTester performanceTester : performanceTesters) {
-                        if (performanceTester instanceof LogDirectoryRelocatable) {
-                            ((LogDirectoryRelocatable) performanceTester).setLogDirectory(logDirForBuild);
-                        }
-                        if (performanceTester instanceof BaseDirectoryRelocatable) {
-                            ((BaseDirectoryRelocatable) performanceTester).setBaseDirectory(baseDirForBuild);
-                        }
-                        performanceTester.run(build, launcher, listener);
-                    }
-                    executor = Executors.newCachedThreadPool();
+        // start performance test executors
+        for (PerformanceTester performanceTester : performanceTesters) {
+            if (performanceTester instanceof LogDirectoryRelocatable) {
+                ((LogDirectoryRelocatable) performanceTester).setLogDirectory(logDirForBuild);
+            }
+            if (performanceTester instanceof BaseDirectoryRelocatable) {
+                ((BaseDirectoryRelocatable) performanceTester).setBaseDirectory(baseDirForBuild);
+            }
+            if (performanceTester instanceof ResultDirectoryRelocatable) {
+                ((ResultDirectoryRelocatable) performanceTester).setResultDirectory(resultDir);
+            }
+            performanceTester.run(build, launcher, listener);
+        }
+        executor = Executors.newCachedThreadPool();
 
-                    // stop resource monitors and collect test results
-                    for (final ResourceMonitor resourceMonitor : resourceMonitors) {
-                        executor.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (resourceMonitor instanceof BaseDirectoryRelocatable) {
-                                    ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
-                                }
-                                try {
-                                    resourceMonitor.stop(build, launcher, listener);
-                                } catch (Exception ex) {
-                                    Thread t = Thread.currentThread();
-                                    t.getUncaughtExceptionHandler().uncaughtException(t, ex);
-                                }
-                            }
-                        });
+        // stop resource monitors and collect test results
+        for (final ResourceMonitor resourceMonitor : resourceMonitors) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    if (resourceMonitor instanceof BaseDirectoryRelocatable) {
+                        ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
                     }
-                    listener.getLogger().println("INFO: Waiting at most 6 hours for resource monitors to stop and complete data transfer...");
-                    executor.shutdown();
                     try {
-                        // Wait for existing tasks to terminate
-                        if (!executor.awaitTermination(6, TimeUnit.HOURS)) {
-                            executor.shutdownNow(); // Cancel currently executing tasks
-                        }
-                    } catch (InterruptedException ie) {
-                        // (Re-)Cancel if current thread also interrupted
-                        executor.shutdownNow();
-                        // Preserve interrupt status
-                        Thread.currentThread().interrupt();
+                        resourceMonitor.stop(build, launcher, listener);
+                    } catch (Exception ex) {
+                        Thread t = Thread.currentThread();
+                        t.getUncaughtExceptionHandler().uncaughtException(t, ex);
                     }
+                }
+            });
+        }
+        listener.getLogger().println("INFO: Waiting at most 6 hours for resource monitors to stop and complete data transfer...");
+        executor.shutdown();
+        try {
+            // Wait for existing tasks to terminate
+            if (!executor.awaitTermination(6, TimeUnit.HOURS)) {
+                executor.shutdownNow(); // Cancel currently executing tasks
+            }
+        } catch (InterruptedException ie) {
+            // (Re-)Cancel if current thread also interrupted
+            executor.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
+        }
 
-                    if (reportDisabled) {
-                        listener.getLogger().println("WARNING: No performance test reports will be generated according to your configuration.");
-                    } else {
-                        PerfchartsBuildReportExecutor perfchartsExecutor = new PerfchartsBuildReportExecutor(perfchartsCommand,
-                                fallbackTimezoneObj,
-                                baseDirForBuild,
-                                reportDirForBuild,
-                                reportDirForBuild + File.separator + Constants.MONO_REPORT_NAME,
-                                null, null,
-                                PerformanceTestBuilder.this.excludedTransactionPattern,
-                                listener.getLogger());
+        if (reportDisabled) {
+            listener.getLogger().println("WARNING: No performance test reports will be generated according to your configuration.");
+        } else {
+            launcher.getChannel().call(new hudson.remoting.Callable<Object, IOException>() {
+                @Override
+                public void checkRoles(RoleChecker checker) throws SecurityException {
+                }
 
+                @Override
+                public Object call() throws IOException {
+                    // generate a report
+                    PerfchartsBuildReportExecutor perfchartsExecutor = new PerfchartsBuildReportExecutor(perfchartsCommand,
+                            fallbackTimezoneObj,
+                            baseDirForBuild,
+                            reportDirForBuild,
+                            reportDirForBuild + File.separator + Constants.MONO_REPORT_NAME,
+                            null, null,
+                            PerformanceTestBuilder.this.excludedTransactionPattern,
+                            listener.getLogger());
+
+                    try {
                         if (perfchartsExecutor.run() != 0) {
                             listener.getLogger().println("ERROR: Perfcharts reported an error when generating a performance report.");
                             throw new InterruptedException("Perfcharts reported an error when generating a performance report.");
                         }
                         listener.getLogger().println("INFO: Performance report generated successfully.");
+                    } catch (InterruptedException e) {
+                        throw new IOException(e);
                     }
                     return null;
                 }
-
             });
-            if (!reportDisabled) {
-                // copy generated report to master
-                listener.getLogger().println("INFO: Copying generated performance report to Jenkins master...");
-                IOHelper.copyDirFromWorkspace(build.getWorkspace().child(reportDirForBuild), Constants.PERF_CHARTS_RELATIVE_PATH, build, listener);
-                listener.getLogger().println("INFO: Preparing views for generated performance report...");
-                build.addAction(new PerfchartsBuildReportAction(build));
-            }
-            listener.getLogger().println("INFO: Everything is done.");
-        } catch (Throwable throwable) {
-            throwable.printStackTrace();
-            return false;
+            // copy generated report to master
+            listener.getLogger().println("INFO: Copying generated performance report to Jenkins master...");
+            IOHelper.copyDirFromWorkspace(build.getWorkspace().child(reportDirForBuild), Constants.PERF_CHARTS_RELATIVE_PATH, build, listener);
         }
+
+        listener.getLogger().println("INFO: Preparing views for generated performance report...");
+        build.addAction(new PerfchartsBuildReportAction(build));
+
+        listener.getLogger().println("INFO: Everything is done.");
         return true;
     }
 

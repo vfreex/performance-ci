@@ -6,9 +6,11 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
+import hudson.remoting.Callable;
 import org.apache.tools.ant.types.Commandline;
 import org.jenkinsci.plugins.perfci.common.BaseDirectoryRelocatable;
 import org.jenkinsci.plugins.perfci.common.LogDirectoryRelocatable;
+import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.BufferedReader;
@@ -30,8 +32,8 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
         }
     }
 
-    private transient String logDirectory;
-    private transient String baseDirectory;
+    private String logDirectory;
+    private String baseDirectory;
     private boolean disabled;
 
     /**
@@ -59,7 +61,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             listener.getLogger().println("[WARNING] Ignore disabled task: " + this.toString());
             return;
         }
-        EnvVars env = build.getEnvironment(listener);
+        final EnvVars env = build.getEnvironment(listener);
         final String resultDir = this.getBaseDirectory() == null || this.getBaseDirectory().isEmpty() ? "" : this.getBaseDirectory();
         final String jmeterLogDir = logDirectory == null || logDirectory.isEmpty() ? resultDir : logDirectory;
 
@@ -80,7 +82,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
             String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + dateFormatForLogName.format(new Date()) + ".log";
             // construct command line arguments for a Jmeter execution
-            List<String> cmdArgs = new LinkedList<String>();
+            final List<String> cmdArgs = new LinkedList<String>();
             cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterCommand))));
             cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterArgs))));
             cmdArgs.add("-n");
@@ -90,17 +92,32 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             cmdArgs.add(resultFileName);
             cmdArgs.add("-j");
             cmdArgs.add(logFileName);
-            listener.getLogger().printf("INFO: Launch Jmeter by executing`" + cmdArgs + "`...\n");
-            ProcessBuilder jmeterProcessBuilder = new ProcessBuilder(cmdArgs);
-            jmeterProcessBuilder.environment().putAll(env);
-            jmeterProcessBuilder.redirectError(jmeterProcessBuilder.redirectOutput());
-            Process jmeter = jmeterProcessBuilder.start();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(jmeter.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null)
-                listener.getLogger().println(line);
-            jmeter.waitFor();
-            reader.close();
+
+            launcher.getChannel().call(new Callable<Object, IOException>() {
+                @Override
+                public void checkRoles(RoleChecker checker) throws SecurityException {
+                }
+
+                @Override
+                public Object call() throws IOException {
+                    listener.getLogger().printf("INFO: Launch Jmeter by executing`" + cmdArgs + "`...\n");
+                    ProcessBuilder jmeterProcessBuilder = new ProcessBuilder(cmdArgs);
+                    jmeterProcessBuilder.environment().putAll(env);
+                    jmeterProcessBuilder.redirectError(jmeterProcessBuilder.redirectOutput());
+                    Process jmeter = jmeterProcessBuilder.start();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(jmeter.getInputStream()));
+                    String line;
+                    while ((line = reader.readLine()) != null)
+                        listener.getLogger().println(line);
+                    try {
+                        jmeter.waitFor();
+                    } catch (InterruptedException ex) {
+                        throw new IOException(ex);
+                    }
+                    reader.close();
+                    return null;
+                }
+            });
         }
     }
 
