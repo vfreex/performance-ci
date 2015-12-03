@@ -68,7 +68,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
         final String workspaceDirFullPath = build.getWorkspace().getRemote();
 
         new File(workspaceDirFullPath + File.separator + resultDir).mkdirs();
-        new File(workspaceDirFullPath + File.separator + logDirectory).mkdirs();
+        new File(workspaceDirFullPath + File.separator + jmeterLogDir).mkdirs();
         new File(workspaceDirFullPath + File.separator + jmeterLogDir).mkdirs();
 
         SimpleDateFormat dateFormatForLogName = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
