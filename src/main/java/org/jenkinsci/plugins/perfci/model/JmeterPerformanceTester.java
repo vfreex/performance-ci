@@ -7,11 +7,14 @@ import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.remoting.Callable;
+import hudson.util.FormValidation;
 import org.apache.tools.ant.types.Commandline;
 import org.jenkinsci.plugins.perfci.common.BaseDirectoryRelocatable;
 import org.jenkinsci.plugins.perfci.common.LogDirectoryRelocatable;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.springframework.util.AntPathMatcher;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -29,6 +32,36 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
         @Override
         public String getDisplayName() {
             return "Apache Jmeter";
+        }
+
+        public FormValidation doCheckJmxIncludingPattern(@QueryParameter String jmxIncludingPattern) {
+            if (jmxIncludingPattern == null || jmxIncludingPattern.isEmpty()) {
+                return FormValidation.error("This blank is required. Maybe you can simply use `**/*.jmx`.");
+            }
+//            AntPathMatcher antPathMatcher = new AntPathMatcher();
+//            if (!antPathMatcher.isPattern(jmxIncludingPattern)){
+//                return FormValidation.error("Invalid pattern format.");
+//            }
+            return FormValidation.ok();
+        }
+        public FormValidation doCheckJmxExcludingPattern(@QueryParameter String jmxExcludingPattern) {
+//            if (jmxExcludingPattern == null || jmxExcludingPattern.isEmpty()) {
+//                return FormValidation.ok();
+//            }
+//            AntPathMatcher antPathMatcher = new AntPathMatcher();
+//            if (!antPathMatcher..isPattern(jmxExcludingPattern)){
+//                return FormValidation.error("Invalid pattern format.");
+//            }
+            return FormValidation.ok();
+        }
+        public FormValidation doCheckJmeterCommand(@QueryParameter String jmeterCommand) {
+            if (jmeterCommand == null || jmeterCommand.isEmpty() || jmeterCommand.trim().isEmpty()) {
+                return FormValidation.error("This blank is required, otherwise Jmeter cannot start.");
+            }
+            return FormValidation.ok();
+        }
+        public FormValidation doCheckJmeterArgs(@QueryParameter String jmeterArgs) {
+            return FormValidation.ok();
         }
     }
 

@@ -6,7 +6,7 @@
     </f:entry>
     <f:advanced>
         <f:entry title="Result directory" field="resultDir">
-            <f:textbox default="perf-test/"/>
+            <f:textbox default="perf-output/"/>
         </f:entry>
         <f:entry title="Keep data for how many builds" field="keepBuilds">
             <f:textbox default="5"/>

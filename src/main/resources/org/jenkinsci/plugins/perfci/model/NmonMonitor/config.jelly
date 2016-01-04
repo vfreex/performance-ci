@@ -8,21 +8,21 @@
     <f:entry title="Disable" field="isDisabled">
         <f:checkbox default="false"/>
     </f:entry>
-    <f:entry title="Host (*)" field="host" description="Host DNS name or IP address">
+    <f:entry title="Host (*)" field="host" description="hostname or IP address of monitored host">
         <f:textbox/>
     </f:entry>
 
-    <f:entry title="User name (*)" field="name" description="User name for SSH logging in">
+    <f:entry title="User name (*)" field="name" description="SSH username">
         <f:textbox/>
     </f:entry>
 
     <f:entry title="Password" field="password"
-             description="leave empty to use public key authentication">
+             description="leave empty to use SSH public key authentication">
         <f:password/>
     </f:entry>
 
     <f:entry title="Fingerprint" field="fingerprint"
-             description="Fingerprint for verifying server's identity. Leaving empty may lead to security issues">
+             description="A public key fingerprint used to verify the identity of monitored host. To ignore the fingerprint check procedure, leave this blank empty.">
         <f:textbox/>
     </f:entry>
     <f:advanced>

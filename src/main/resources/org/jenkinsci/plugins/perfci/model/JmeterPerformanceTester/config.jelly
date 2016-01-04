@@ -4,10 +4,10 @@
     <f:entry title="Disable" field="disabled">
         <f:checkbox />
     </f:entry>
-    <f:entry title="include JMX files" field="jmxIncludingPattern">
+    <f:entry title="inclusion JMX files" field="jmxIncludingPattern">
         <f:textbox default="**/*.jmx" />
     </f:entry>
-    <f:entry title="exclude JMX files" field="jmxExcludingPattern">
+    <f:entry title="exclusion JMX files" field="jmxExcludingPattern">
         <f:textbox default="" />
     </f:entry>
     <f:advanced>

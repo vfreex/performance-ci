@@ -1,0 +1,4 @@
+<p>A public key fingerprint is a short sequence of bytes used to identify a longer public key. Fingerprints are created by applying a cryptographic hash function to a public key.</p>
+<p>If you ignore this blank, the SSH connection to your monitored host is vulnerable to a <a href="https://en.wikipedia.org/wiki/Man-in-the-middle_attack">man-in-the-middle attack</a>.</p>
+<p>Fingerprints can be determined using ssh-keygen on your monitored host:</p>
+<code>ssh-keygen -lf /etc/ssh/ssh_host_ecdsa_key.pub</code>

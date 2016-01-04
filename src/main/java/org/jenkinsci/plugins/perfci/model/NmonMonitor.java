@@ -12,7 +12,6 @@ import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
-import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.InMemorySourceFile;
 import org.apache.tools.tar.TarEntry;
 import org.jenkinsci.plugins.perfci.common.BaseDirectoryRelocatable;
@@ -50,18 +49,18 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             return FormValidation.ok();
         }
 
-        // public FormValidation doCheckPassword(@QueryParameter String
-        // password) {
-        // if (password == null || password.isEmpty()) {
-        // return FormValidation.error("Password can't be empty");
-        // }
-        // return FormValidation.ok();
-        // }
+        public FormValidation doCheckPassword(@QueryParameter String
+                                                      password) {
+            if (password == null || password.isEmpty()) {
+                return FormValidation.ok();
+            }
+            return FormValidation.warning("Storing your SSH password to a Jenkins server is a bad practice, because other people are able to inspect your password though the source code of this web page. We recommend you to use public key authentication.");
+        }
 
         public FormValidation doCheckFingerprint(
                 @QueryParameter String fingerprint) {
             if (fingerprint == null || fingerprint.isEmpty()) {
-                return FormValidation.ok();
+                return FormValidation.warning("If you ignore this blank, the SSH connection to your monitored host is vulnerable to a man-in-the-middle (MITM) attack.");
             }
             if (!Pattern.matches("[\\da-fA-F]{1,2}(?:\\:[\\da-fA-F]{1,2}){15}",
                     fingerprint)) {
@@ -129,7 +128,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         return interval;
     }
 
-    private boolean tryStart(String projectName, int buildId, BuildListener listener) throws IOException, InterruptedException {
+    private void tryStart(String projectName, int buildId, BuildListener listener) throws IOException, InterruptedException {
         SSHClient client = new SSHClient();
         if (fingerprint != null && !fingerprint.isEmpty())
             client.addHostKeyVerifier(fingerprint);
@@ -197,7 +196,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                     listener
                             .getLogger().println(
                             "ERROR: Cannot extract files from 'jenkins-perfci-upload.tar.gz'.");
-                    return false;
+                    return;
                 }
             }
             listener.getLogger().println(
@@ -212,9 +211,8 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             if (cmd.getExitStatus() != 0) {
                 listener.getLogger().println(
                         "INFO: error code=" + cmd.getExitStatus());
-                return false;
+                throw new IOException("ERROR: Failed to call start_monitor on monitored host.");
             }
-            return true;
         } finally {
             client.close();
         }
@@ -232,7 +230,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         return "/tmp/jenkins-perfci/jobs/" + projectName;
     }
 
-    private boolean tryStop(String projectName, int buildId, String workspaceDir, BuildListener listener) throws IOException, InterruptedException {
+    private void tryStop(String projectName, int buildId, String workspaceDir, BuildListener listener) throws IOException, InterruptedException {
         //String projectDir = getProjectDir(projectName);
         SSHClient client = new SSHClient();
         if (fingerprint != null && !fingerprint.isEmpty())
@@ -257,8 +255,8 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
             session.close();
             if (cmd.getExitStatus() != 0 && cmd.getExitStatus() != 1) {
-                listener.getLogger().println("INFO: Cannot stop.");
-                return false;
+                listener.getLogger().println("ERROR: Failed to call stop_monitor.");
+                return;// false;
             }
 
             String resultDir = this.getBaseDirectory() == null || this.getBaseDirectory().isEmpty() ? "" : this.getBaseDirectory();
@@ -277,8 +275,8 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
             session.close();
             if (cmd.getExitStatus() != 0) {
-                listener.getLogger().println("ERROR: Compress failed.");
-                return false;
+                listener.getLogger().println("ERROR: Compress failed. Failed to call tar.");
+                return;
             }
 
             String to = pathOnAgent + "/monitoring-" + UUID.randomUUID().toString() + ".tar.gz";
@@ -287,38 +285,34 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                             + "')...");
             client.newSCPFileTransfer().download(gzipFilePath, to);
             listener.getLogger().println("INFO: Decompress...");
-            try {
-                File destGzipFile = new File(to);
-                TarInputStream tarIn = new TarInputStream(new GZIPInputStream(new FileInputStream(destGzipFile)));
-                TarEntry tarEnt;
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((tarEnt = tarIn.getNextEntry()) != null) {
-                    File file = tarEnt.getFile();
-                    File decompressedFile = new File(pathOnAgent, tarEnt.getName());
-                    if (!tarEnt.isDirectory()) {
-                        OutputStream out = new FileOutputStream(decompressedFile);
-                        while ((bytesRead = tarIn.read(buffer, 0, buffer.length)) > 0) {
-                            out.write(buffer, 0, bytesRead);
-                        }
-                        out.flush();
-                        out.close();
-                        listener.getLogger().println("INFO: File '" + tarEnt.getName() + "' has been decompressed into workspace.");
-                    } else {
-                        decompressedFile.mkdirs();
-                        listener.getLogger().println("INFO: Create directory '" + decompressedFile.getAbsolutePath() + "'.");
+            //try {
+            File destGzipFile = new File(to);
+            TarInputStream tarIn = new TarInputStream(new GZIPInputStream(new FileInputStream(destGzipFile)));
+            TarEntry tarEnt;
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((tarEnt = tarIn.getNextEntry()) != null) {
+                File file = tarEnt.getFile();
+                File decompressedFile = new File(pathOnAgent, tarEnt.getName());
+                if (!tarEnt.isDirectory()) {
+                    OutputStream out = new FileOutputStream(decompressedFile);
+                    while ((bytesRead = tarIn.read(buffer, 0, buffer.length)) > 0) {
+                        out.write(buffer, 0, bytesRead);
                     }
+                    out.flush();
+                    out.close();
+                    listener.getLogger().println("INFO: File '" + tarEnt.getName() + "' has been decompressed into workspace.");
+                } else {
+                    decompressedFile.mkdirs();
+                    listener.getLogger().println("INFO: Create directory '" + decompressedFile.getAbsolutePath() + "'.");
                 }
-                destGzipFile.delete();
-            } catch (Exception ex) {
-                listener.getLogger().println("ERROR: " + ex.toString());
-                return false;
             }
-            return true;
-        } catch (UserAuthException ex) {
-            throw ex;
-        } catch (IOException ex) {
-            return false;
+            destGzipFile.delete();
+//            } catch (Exception ex) {
+//                listener.getLogger().println("ERROR: " + ex.toString());
+//                return false;
+//            }
+            //return true;
         } finally {
             client.close();
         }
@@ -349,21 +343,16 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             public Object call() throws IOException {
                 try {
                     listener.getLogger().println("INFO: Starting NMON monitor...");
-                    if (tryStart(projectName, buildId, listener)) {
-                        listener.getLogger().println("INFO: NMON monitor started.");
-                        return null;
-                    } else
-                        throw new IOException("ERROR: External program returned with a non-zero code.");
+                    tryStart(projectName, buildId, listener);
+                    listener.getLogger().println("INFO: NMON monitor started.");
                 } catch (InterruptedException e) {
                     listener.getLogger().println(
                             "ERROR: Failed to start NMON monitor.");
                     throw new IOException(e);
                 }
+                return null;
             }
         });
-//        }
-//        listener.getLogger().println(
-//                "ERROR: Cannot start NMON monitor. Give up.");
     }
 
     @Override
@@ -389,16 +378,13 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             public Object call() throws IOException {
                 try {
                     listener.getLogger().println("INFO: Stopping NMON monitor...");
-                    if (tryStop(projectName, buildId, workspaceDir, listener)) {
-                        listener.getLogger().println("INFO: NMON monitor stopped.");
-                        return null;
-                    } else
-                        throw new IOException("ERROR: External program returned with a non-zero code.");
+                    tryStop(projectName, buildId, workspaceDir, listener);
                 } catch (InterruptedException e) {
                     listener.getLogger().println(
                             "ERROR: Failed to stop NMON monitor.");
                     throw new IOException(e);
                 }
+                return null;
             }
         });
 //                listener.getLogger().println("WARNING: Fail to stop NMON monitor.");
