@@ -116,6 +116,10 @@ public class PerfchartsComparisonReport {
         String monoReportFilePath = outputPath + File.separator +
                 Constants.MONO_REPORT_NAME;
         if (!new File(monoReportFilePath).exists()) {
+            buildReport();
+        }
+        // still not found
+        if (!new File(monoReportFilePath).exists()) {
             LOGGER.warning("Mono report file ` " + monoReportFilePath + " ` doesn't exist.");
             response.sendError(404);
             return;

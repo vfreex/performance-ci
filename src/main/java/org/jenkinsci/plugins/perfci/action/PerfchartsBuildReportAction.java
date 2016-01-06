@@ -41,6 +41,7 @@ public class PerfchartsBuildReportAction implements Action {
         response.setContentType("text/html; charset=UTF-8");
         IOHelper.copySteam(new FileInputStream(monoReportFile),
                 response.getOutputStream());
+
     }
 
     public void doGetDataJs(StaplerRequest request, StaplerResponse response)
@@ -108,4 +109,6 @@ public class PerfchartsBuildReportAction implements Action {
     public String getUrlName() {
         return ACTION_PATH;
     }
+
+
 }

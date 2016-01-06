@@ -3,6 +3,7 @@ package org.jenkinsci.plugins.perfci.executor;
 import org.apache.tools.ant.types.Commandline;
 import org.jenkinsci.plugins.perfci.common.IOHelper;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
@@ -16,6 +17,7 @@ import java.util.TimeZone;
  */
 public class PerfchartsBuildReportExecutor extends AbstractExternalProgramExecutor implements Serializable {
     private String cgtCommand;
+    private String currentDirectory;
     private TimeZone timeZone;
     private String inputDir;
     private String outputDir;
@@ -29,10 +31,11 @@ public class PerfchartsBuildReportExecutor extends AbstractExternalProgramExecut
     private String excludedTransactionPattern;
     private PrintStream redirectedOutput;
 
-    public PerfchartsBuildReportExecutor(String cgtCommand, TimeZone timeZone, String inputDir, String outputDir,
+    public PerfchartsBuildReportExecutor(String cgtCommand, String currentDirectory, TimeZone timeZone, String inputDir, String outputDir,
                                          String monoReportPath, String startOffset, String testDuration,/*String fromTime, String toTime,*/
                                          String excludedTransactionPattern, PrintStream redirectedOutput) {
         this.cgtCommand = cgtCommand;
+        this.currentDirectory = currentDirectory;
         this.redirectedOutput = redirectedOutput;
         this.timeZone = timeZone;
         this.inputDir = inputDir;
@@ -79,6 +82,8 @@ public class PerfchartsBuildReportExecutor extends AbstractExternalProgramExecut
                     + "`");
 
         ProcessBuilder cgtProcessBuilder = new ProcessBuilder(arguments);
+        if (currentDirectory != null)
+            cgtProcessBuilder.directory(new File(currentDirectory));
 
         if (redirectedOutput != null)
             redirectedOutput.println("INFO: PerfchartsBuildReportExecutor - Generating performance test report from '" + inputDir

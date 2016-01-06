@@ -80,7 +80,7 @@ public class PerfchartsTrendReportAction implements Action/*, StaplerProxy*/ {
             }
         }
         result.put("error", 0);
-        result.put("url", "show/" + urlID);
+        result.put("url", "show/" + urlID + "/monoReport");
         response.getWriter().write(result.toString());
         //response.sendRedirect(302, "show/" + sb.toString());
     }

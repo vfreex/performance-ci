@@ -1,0 +1,43 @@
+<j:jelly xmlns:j="jelly:core">
+
+    <!--<style type="text/css">-->
+    <!--</style>-->
+    <!--<script type="text/javascript"-->
+    <!--src="${resURL}/plugin/perfci/js/PerfchartsBuildAction.js"></script>-->
+    <!--<ul>-->
+    <!--<li>-->
+    <!--<a href="performance-report/monoReport" target="_blank">Performance test report</a>-->
+    <!--</li>-->
+    <!--<li>-->
+    <!--<label for="sel_build">Do Comparison</label>-->
+    <!--<select id="sel_build">-->
+    <!--<option>&#45;&#45; choose a build &#45;&#45;</option>-->
+    <!--</select>-->
+    <!--</li>-->
+    <!--</ul>-->
+    <table>
+        <tr>
+            <td rowspan="2">
+                <img src="${resURL}/images/48x48/graph.png" alt="Performance Report"/>
+            </td>
+            <td>
+                <a href="performance-report/monoReport" target="_blank">Open performance test report</a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="sel_build">Compare with</label>
+                <select id="sel_build">
+                    <option>-- choose a build --</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <script type="text/javascript"
+            src="${resURL}/plugin/perfci/lib/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript">
+        jQuery.noConflict();
+    </script>
+    <script type="text/javascript"
+            src="${resURL}/plugin/perfci/js/PerfchartsBuildAction.summary.js"></script>
+</j:jelly>

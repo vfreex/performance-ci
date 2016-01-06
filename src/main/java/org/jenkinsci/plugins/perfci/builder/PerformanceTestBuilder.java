@@ -193,6 +193,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
                 public Object call() throws IOException {
                     // generate a report
                     PerfchartsBuildReportExecutor perfchartsExecutor = new PerfchartsBuildReportExecutor(perfchartsCommand,
+                            build.getWorkspace().getRemote(),
                             fallbackTimezoneObj,
                             baseDirForBuild,
                             reportDirForBuild,
@@ -200,6 +201,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
                             null, null,
                             PerformanceTestBuilder.this.excludedTransactionPattern,
                             listener.getLogger());
+
 
                     try {
                         if (perfchartsExecutor.run() != 0) {
@@ -304,5 +306,4 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
     public void setExcludedTransactionPattern(String excludedTransactionPattern) {
         this.excludedTransactionPattern = excludedTransactionPattern;
     }
-
 }
