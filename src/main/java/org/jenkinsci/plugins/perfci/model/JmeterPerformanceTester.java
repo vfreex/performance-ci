@@ -102,7 +102,6 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
 
         new File(workspaceDirFullPath + File.separator + resultDir).mkdirs();
         new File(workspaceDirFullPath + File.separator + jmeterLogDir).mkdirs();
-        new File(workspaceDirFullPath + File.separator + jmeterLogDir).mkdirs();
 
         SimpleDateFormat dateFormatForLogName = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
         dateFormatForLogName.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -114,6 +113,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             String fileRelativePath = new File(workspaceDirFullPath).toPath().relativize(new File(fileFullPath).toPath()).toString();
             String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
             String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + dateFormatForLogName.format(new Date()) + ".log";
+            new File(logFileName).createNewFile();
             // construct command line arguments for a Jmeter execution
             final List<String> cmdArgs = new LinkedList<String>();
             cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterCommand))));
