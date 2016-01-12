@@ -28,7 +28,7 @@
             <td>
                 <label for="sel_build">Compare with</label>
                 <select id="sel_build">
-                    <option>-- choose a build --</option>
+                    <option value="">-- choose a build --</option>
                 </select>
             </td>
         </tr>
