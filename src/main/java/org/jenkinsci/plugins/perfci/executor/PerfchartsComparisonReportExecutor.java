@@ -1,10 +1,10 @@
 package org.jenkinsci.plugins.perfci.executor;
 
 import org.apache.tools.ant.types.Commandline;
-import org.jenkinsci.plugins.perfci.common.Constants;
 import org.jenkinsci.plugins.perfci.common.IOHelper;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,8 +44,8 @@ public class PerfchartsComparisonReportExecutor extends AbstractExternalProgramE
         Process cgtProcess = cgtProcessBuilder.start();
         PrintStream errStream = redirectedOutput == null ? System.err
                 : redirectedOutput;
-        if (redirectedOutput != null)
-            IOHelper.copySteam(cgtProcess.getErrorStream(), redirectedOutput);
+        if (errStream != null)
+            IOHelper.copySteam(cgtProcess.getErrorStream(), errStream);
         return cgtProcess.waitFor();
     }
 
