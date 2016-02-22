@@ -12,12 +12,16 @@
             </style>
             <script type="text/javascript"
                     src="${resURL}/plugin/perfci/js/PerfchartsBuildAction.js"></script>
-            <ul>
+            <ul style="list-style: none;">
                 <li>
-                    <a href="monoReport" target="_blank">Open test report for this build</a>
+                    <a href="monoReport" target="_blank">
+                        <img src="${resURL}/images/48x48/graph.png"
+                             alt="Performance Report"/>
+                        <span>Open performance test report for this build</span>
+                    </a>
                 </li>
                 <li>
-                    <label for="sel_build">Do Comparison</label>
+                    <label for="sel_build">Compare to </label>
                     <select id="sel_build">
                         <option>-- choose a build --</option>
                     </select>

@@ -112,8 +112,9 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             // get relative path to workspace
             String fileRelativePath = new File(workspaceDirFullPath).toPath().relativize(new File(fileFullPath).toPath()).toString();
             String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
-            String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + dateFormatForLogName.format(new Date()) + ".log";
-            new File(logFileName).createNewFile();
+            //String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + dateFormatForLogName.format(new Date()) + ".log";
+            //listener.getLogger().println("Create log file '" + logFileName + "'.");
+            //new File(logFileName).createNewFile();
             // construct command line arguments for a Jmeter execution
             final List<String> cmdArgs = new LinkedList<String>();
             cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterCommand))));
@@ -123,8 +124,8 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             cmdArgs.add(fileRelativePath);
             cmdArgs.add("-l");
             cmdArgs.add(resultFileName);
-            cmdArgs.add("-j");
-            cmdArgs.add(logFileName);
+            //cmdArgs.add("-j");
+            //cmdArgs.add(logFileName);
 
             launcher.getChannel().call(new Callable<Object, IOException>() {
                 @Override

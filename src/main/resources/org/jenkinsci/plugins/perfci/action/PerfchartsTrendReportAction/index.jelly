@@ -16,9 +16,20 @@
             <script type="text/javascript"
                     src="${resURL}/plugin/perfci/js/PerfchartsProjectTrendAction.js"></script>
             <form action="submit" method="post" name="builds_input">
-                <f:entry description="A comma separated list. Leaving empty means all builds are included.">
+                <p>
+                    Specify which builds you want to show in the report. If you are not sure, just click <strong>OK</strong>.
+                </p>
+                <f:entry>
                     <textarea id="builds" name="builds"></textarea>
                 </f:entry>
+                <p>
+                    A comma separated list, without space. Leaving empty means all builds are included. There are some examples:
+                </p>
+                <ul>
+                    <li>1-5</li>
+                    <li>1-5,7,8-11</li>
+                    <li>89-60,2,5,4,7-10</li>
+                </ul>
                 <input id="btn_submit" type="button" value="OK"/>
                 <p id="message"></p>
             </form>

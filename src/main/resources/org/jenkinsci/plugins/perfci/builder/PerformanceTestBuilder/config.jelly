@@ -38,12 +38,15 @@
         <f:entry title="Fallback timezone" field="fallbackTimezone">
             <f:textbox default="UTC"/>
         </f:entry>
+        <f:entry title="Choose report template" field="reportTemplate">
+            <f:select></f:select>
+        </f:entry>
         <f:advanced>
             <f:entry title="Excluded transactions" field="excludedTransactionPattern" description="A regular expression which specifying excluded transactions for average response time and TPS calculation. ex: ping\.html">
                 <f:textbox />
             </f:entry>
             <f:entry title="Perfcharts command" field="perfchartsCommand">
-                <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw 10.73.3.1:5000/perfci-agent cgt-perf" />
+                <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw 10.73.3.1:5000/perfci-agent perfcharts" />
             </f:entry>
         </f:advanced>
     </f:section>

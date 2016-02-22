@@ -9,13 +9,14 @@ import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
+import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.perfci.action.PerfchartsBuildReportAction;
 import org.jenkinsci.plugins.perfci.action.PerfchartsTrendReportAction;
 import org.jenkinsci.plugins.perfci.common.*;
 import org.jenkinsci.plugins.perfci.common.TaskQueue;
-import org.jenkinsci.plugins.perfci.executor.PerfchartsBuildReportExecutor;
+import org.jenkinsci.plugins.perfci.executor.PerfchartsNewExecutor;
 import org.jenkinsci.plugins.perfci.model.PerformanceTester;
 import org.jenkinsci.plugins.perfci.model.ResourceMonitor;
 import org.jenkinsci.remoting.RoleChecker;
@@ -31,54 +32,6 @@ import java.util.*;
  * Created by vfreex on 11/23/15.
  */
 public class PerformanceTestBuilder extends Builder implements Serializable {
-    /**
-     * Descriptor for {@link PerformanceTestBuilder}. Used as a singleton.
-     * The class is marked as public so that it can be accessed from views.
-     */
-    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
-    public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
-        /**
-         * In order to load the persisted global configuration, you have to
-         * call load() in the constructor.
-         */
-        public DescriptorImpl() {
-            load();
-        }
-
-
-        public boolean isApplicable(Class<? extends AbstractProject> aClass) {
-            // Indicates that this builder can be used with all kinds of project types
-            return true;
-        }
-
-        /**
-         * This human readable name is used in the configuration screen.
-         */
-        public String getDisplayName() {
-            return "Run performance test";
-        }
-
-        @Override
-        public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
-            save();
-            return super.configure(req, formData);
-        }
-
-        public List<? extends PerformanceTester.PerformanceTesterDescriptor> getPerformanceTesterDescriptors() {
-            return Jenkins
-                    .getInstance()
-                    .<PerformanceTester, PerformanceTester.PerformanceTesterDescriptor>getDescriptorList(
-                            PerformanceTester.class);
-        }
-
-        public List<? extends ResourceMonitor.ResourceMonitorDescriptor> getResourceMonitorDescriptors() {
-            return Jenkins
-                    .getInstance()
-                    .<ResourceMonitor, ResourceMonitor.ResourceMonitorDescriptor>getDescriptorList(
-                            ResourceMonitor.class);
-        }
-    }
-
     private boolean disabled;
     private String resultDir;
     private int keepBuilds;
@@ -88,9 +41,10 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
     private List<ResourceMonitor> resourceMonitors;
     private String perfchartsCommand;
     private String excludedTransactionPattern;
+    private String reportTemplate;
 
     @DataBoundConstructor
-    public PerformanceTestBuilder(boolean disabled, String resultDir, int keepBuilds, boolean reportDisabled, String fallbackTimezone, List<PerformanceTester> performanceTesters, List<ResourceMonitor> resourceMonitors, String perfchartsCommand, String excludedTransactionPattern) {
+    public PerformanceTestBuilder(boolean disabled, String resultDir, int keepBuilds, boolean reportDisabled, String fallbackTimezone, List<PerformanceTester> performanceTesters, List<ResourceMonitor> resourceMonitors, String perfchartsCommand, String excludedTransactionPattern, String reportTemplate) {
         this.disabled = disabled;
         this.resultDir = resultDir;
         this.keepBuilds = keepBuilds;
@@ -98,6 +52,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
         this.fallbackTimezone = fallbackTimezone;
         this.perfchartsCommand = perfchartsCommand;
         this.excludedTransactionPattern = excludedTransactionPattern;
+        this.reportTemplate = reportTemplate;
         this.performanceTesters = performanceTesters != null ? performanceTesters : Collections.<PerformanceTester>emptyList();
         this.resourceMonitors = resourceMonitors != null ? resourceMonitors : Collections.<ResourceMonitor>emptyList();
     }
@@ -192,13 +147,12 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
                 @Override
                 public Object call() throws IOException {
                     // generate a report
-                    PerfchartsBuildReportExecutor perfchartsExecutor = new PerfchartsBuildReportExecutor(perfchartsCommand,
-                            build.getWorkspace().getRemote(),
+                    PerfchartsNewExecutor perfchartsExecutor = new PerfchartsNewExecutor(perfchartsCommand,
+                            reportTemplate, build.getWorkspace().getRemote(),
                             fallbackTimezoneObj,
                             baseDirForBuild,
                             reportDirForBuild,
                             reportDirForBuild + File.separator + Constants.MONO_REPORT_NAME,
-                            null, null,
                             PerformanceTestBuilder.this.excludedTransactionPattern,
                             listener.getLogger());
 
@@ -298,7 +252,6 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
         this.perfchartsCommand = perfchartsCommand;
     }
 
-
     public String getExcludedTransactionPattern() {
         return excludedTransactionPattern;
     }
@@ -306,4 +259,67 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
     public void setExcludedTransactionPattern(String excludedTransactionPattern) {
         this.excludedTransactionPattern = excludedTransactionPattern;
     }
+
+    public String getReportTemplate() {
+        return reportTemplate;
+    }
+
+    public void setReportTemplate(String reportTemplate) {
+        this.reportTemplate = reportTemplate;
+    }
+
+    /**
+     * Descriptor for {@link PerformanceTestBuilder}. Used as a singleton.
+     * The class is marked as public so that it can be accessed from views.
+     */
+    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+        /**
+         * In order to load the persisted global configuration, you have to
+         * call load() in the constructor.
+         */
+        public DescriptorImpl() {
+            load();
+        }
+
+
+        public boolean isApplicable(Class<? extends AbstractProject> aClass) {
+            // Indicates that this builder can be used with all kinds of project types
+            return true;
+        }
+
+        /**
+         * This human readable name is used in the configuration screen.
+         */
+        public String getDisplayName() {
+            return "Run performance test";
+        }
+
+        @Override
+        public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
+            save();
+            return super.configure(req, formData);
+        }
+
+        public List<? extends PerformanceTester.PerformanceTesterDescriptor> getPerformanceTesterDescriptors() {
+            return Jenkins
+                    .getInstance()
+                    .<PerformanceTester, PerformanceTester.PerformanceTesterDescriptor>getDescriptorList(
+                            PerformanceTester.class);
+        }
+
+        public List<? extends ResourceMonitor.ResourceMonitorDescriptor> getResourceMonitorDescriptors() {
+            return Jenkins
+                    .getInstance()
+                    .<ResourceMonitor, ResourceMonitor.ResourceMonitorDescriptor>getDescriptorList(
+                            ResourceMonitor.class);
+        }
+
+        public ListBoxModel doFillReportTemplateItems() {
+            return new ListBoxModel(new ListBoxModel.Option("Performance baseline test", "perf-baseline"),
+                    new ListBoxModel.Option("General purpose performance test", "perf-general"));
+        }
+    }
+
+
 }

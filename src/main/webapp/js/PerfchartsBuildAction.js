@@ -36,7 +36,8 @@
 			$sel_build.change(function() {
 				var selectedBuildNumber = $(this).prop("value");
 				if (selectedBuildNumber)
-					location.href = "comparisonReport/" + selectedBuildNumber + "/monoReport";
+					//location.href = ;
+					window.open("comparisonReport/" + selectedBuildNumber + "/monoReport");
 			});
 		//add the action for startOffset related setting
 		var $startOffset_error_msg = $("#startOffset_error_msg")
