@@ -19,6 +19,7 @@ public class PerfchartsComparisonReportExecutor extends AbstractExternalProgramE
     private String monoReportPath;
     private PrintStream redirectedOutput;
 
+
     public PerfchartsComparisonReportExecutor(String command, String inputFile, String outputDir, String monoReportPath) {
         this.command = command;
         this.inputFile = inputFile;

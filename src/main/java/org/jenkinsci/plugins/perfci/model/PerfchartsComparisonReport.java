@@ -9,7 +9,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.io.IOUtils;
 import org.jenkinsci.plugins.perfci.common.Constants;
 import org.jenkinsci.plugins.perfci.common.IOHelper;
-import org.jenkinsci.plugins.perfci.executor.PerfchartsComparisonReportExecutor;
+import org.jenkinsci.plugins.perfci.executor.PerfchartsNewExecutor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -29,6 +29,11 @@ public class PerfchartsComparisonReport {
         if (destBuild == null)
             throw new NullPointerException("destBuild");
         this.destBuild = destBuild;
+    }
+
+    private static void writeJSON(StaplerResponse response, JSONObject json)
+            throws IOException {
+        IOUtils.write(json.toString(), response.getOutputStream());
     }
 
     private void buildReport() throws IOException, InterruptedException {
@@ -62,8 +67,20 @@ public class PerfchartsComparisonReport {
         csvPrinter.flush();
         csvPrinter.close();
         String outputPath = inputPath + File.separator + "report";
-        PerfchartsComparisonReportExecutor cgtCmp = new PerfchartsComparisonReportExecutor("cgt-cmp", inputPath, outputPath, outputPath + File.separator + Constants.MONO_REPORT_NAME);
-        int retcode = cgtCmp.run();
+        //PerfchartsComparisonReportExecutor cgtCmp = new PerfchartsComparisonReportExecutor("cgt-cmp", inputPath, outputPath, outputPath + File.separator + Constants.MONO_REPORT_NAME);
+
+        String subtitle = String.format("(current build: %s, baseline: %s, diff = current - baseline)", sourceDisplayName, destDisplayName);
+        PerfchartsNewExecutor perfchartsExecutor = new PerfchartsNewExecutor("perfcharts",
+                "perf-compare",
+                inputPath,
+                null,
+                inputPath,
+                outputPath,
+                outputPath + File.separator + Constants.MONO_REPORT_NAME,
+                null,
+                subtitle,
+                null);
+        int retcode = perfchartsExecutor.run();
         if (retcode != 0)
             throw new IOException("PerfchartsComparisonReportExecutor reported an error, exit code=" + retcode);
     }
@@ -144,11 +161,6 @@ public class PerfchartsComparisonReport {
         result.put("error", 0);
         result.put("errorMessage", "Generated.");
         writeJSON(response, result);
-    }
-
-    private static void writeJSON(StaplerResponse response, JSONObject json)
-            throws IOException {
-        IOUtils.write(json.toString(), response.getOutputStream());
     }
 
     public void doGetDestBuilds(StaplerRequest request, StaplerResponse response)

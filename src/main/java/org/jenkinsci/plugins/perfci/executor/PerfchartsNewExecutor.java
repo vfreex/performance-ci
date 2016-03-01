@@ -11,11 +11,13 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.logging.Logger;
 
 /**
  * Created by vfreex on 11/25/15.
  */
 public class PerfchartsNewExecutor extends AbstractExternalProgramExecutor implements Serializable {
+    private final static Logger LOGGER = Logger.getLogger(PerfchartsNewExecutor.class.toString());
     private String cgtCommand;
     private String reportType;
     private String currentDirectory;
@@ -24,7 +26,27 @@ public class PerfchartsNewExecutor extends AbstractExternalProgramExecutor imple
     private String outputDir;
     private String monoReportPath;
     private String excludedTransactionPattern;
+
+    private String subtitle;
     private PrintStream redirectedOutput;
+
+    public PerfchartsNewExecutor(String cgtCommand,
+                                 String reportType,
+                                 String currentDirectory,
+                                 TimeZone timeZone,
+                                 String inputDir,
+                                 String outputDir, String monoReportPath, String excludedTransactionPattern, String subtitle, PrintStream redirectedOutput) {
+        this.cgtCommand = cgtCommand;
+        this.reportType = reportType;
+        this.currentDirectory = currentDirectory;
+        this.timeZone = timeZone;
+        this.inputDir = inputDir;
+        this.outputDir = outputDir;
+        this.monoReportPath = monoReportPath;
+        this.excludedTransactionPattern = excludedTransactionPattern;
+        this.subtitle = subtitle;
+        this.redirectedOutput = redirectedOutput;
+    }
 
     public PerfchartsNewExecutor(String cgtCommand, String reportType, String currentDirectory, TimeZone timeZone, String inputDir, String outputDir,
                                  String monoReportPath,
@@ -63,6 +85,10 @@ public class PerfchartsNewExecutor extends AbstractExternalProgramExecutor imple
             arguments.add("-e");
             arguments.add(excludedTransactionPattern);
         }
+        if (subtitle != null) {
+            arguments.add("--subtitle");
+            arguments.add(subtitle);
+        }
         arguments.add(inputDir);
 
         if (redirectedOutput != null)
@@ -76,6 +102,7 @@ public class PerfchartsNewExecutor extends AbstractExternalProgramExecutor imple
         if (redirectedOutput != null)
             redirectedOutput.println("INFO: PerfchartsBuildReportExecutor - Generating performance test report from '" + inputDir
                     + "'...");
+        LOGGER.info("Will exec " + arguments);
         Process cgtProcess = cgtProcessBuilder.start();
         if (redirectedOutput != null)
             IOHelper.copySteam(cgtProcess.getErrorStream(), redirectedOutput);
@@ -112,5 +139,13 @@ public class PerfchartsNewExecutor extends AbstractExternalProgramExecutor imple
 
     public void setReportType(String reportType) {
         this.reportType = reportType;
+    }
+
+    public String getSubtitle() {
+        return subtitle;
+    }
+
+    public void setSubtitle(String subtitle) {
+        this.subtitle = subtitle;
     }
 }
