@@ -139,6 +139,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
         if (reportDisabled) {
             listener.getLogger().println("WARNING: No performance test reports will be generated according to your configuration.");
         } else {
+            final String workspaceFullPathOnAgent = build.getWorkspace().getRemote();
             launcher.getChannel().call(new hudson.remoting.Callable<Object, IOException>() {
                 @Override
                 public void checkRoles(RoleChecker checker) throws SecurityException {
@@ -148,7 +149,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
                 public Object call() throws IOException {
                     // generate a report
                     PerfchartsNewExecutor perfchartsExecutor = new PerfchartsNewExecutor(perfchartsCommand,
-                            reportTemplate, build.getWorkspace().getRemote(),
+                            reportTemplate, workspaceFullPathOnAgent,
                             fallbackTimezoneObj,
                             baseDirForBuild,
                             reportDirForBuild,
