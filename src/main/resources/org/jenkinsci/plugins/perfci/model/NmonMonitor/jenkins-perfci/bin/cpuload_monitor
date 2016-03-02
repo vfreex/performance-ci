@@ -17,7 +17,7 @@ esac
 done
 shift $[$OPTIND - 1]
 
-output_file_name=`hostname`_`date +%y%m%d_%H%M%S`.load
+output_file_name=`hostname -s`_`date +%y%m%d_%H%M%S`.load
 output_path=$output_dir/$output_file_name
 
 while true; do

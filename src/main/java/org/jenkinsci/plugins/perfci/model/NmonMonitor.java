@@ -27,75 +27,17 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocatable {
-    @Extension
-    public static class DescriptorImpl extends ResourceMonitorDescriptor {
-
-        @Override
-        public String getDisplayName() {
-            return "NMON Monitor";
-        }
-
-        public FormValidation doCheckHost(@QueryParameter String host) {
-            if (host == null || host.isEmpty()) {
-                return FormValidation.error("Host name can't be empty");
-            }
-            return FormValidation.ok();
-        }
-
-        public FormValidation doCheckName(@QueryParameter String name) {
-            if (name == null || name.isEmpty()) {
-                return FormValidation.error("User name can't be empty");
-            }
-            return FormValidation.ok();
-        }
-
-        public FormValidation doCheckPassword(@QueryParameter String
-                                                      password) {
-            if (password == null || password.isEmpty()) {
-                return FormValidation.ok();
-            }
-            return FormValidation.warning("Storing your SSH password to a Jenkins server is a bad practice, because other people are able to inspect your password though the source code of this web page. We recommend you to use public key authentication.");
-        }
-
-        public FormValidation doCheckFingerprint(
-                @QueryParameter String fingerprint) {
-            if (fingerprint == null || fingerprint.isEmpty()) {
-                return FormValidation.warning("If you ignore this blank, the SSH connection to your monitored host is vulnerable to a man-in-the-middle (MITM) attack.");
-            }
-            if (!Pattern.matches("[\\da-fA-F]{1,2}(?:\\:[\\da-fA-F]{1,2}){15}",
-                    fingerprint)) {
-                return FormValidation.error("Invalid fingerprint format");
-            }
-            return FormValidation.ok();
-        }
-
-        public FormValidation doCheckInterval(@QueryParameter String interval) {
-            if (interval == null || interval.isEmpty()) {
-                return FormValidation.error("Interval can't be empty");
-            }
-            if (!Pattern.matches("\\d{1,10}", interval)) {
-                return FormValidation.error("Invalid interval format");
-            }
-            if (Integer.parseInt(interval) <= 0) {
-                return FormValidation.error("Invalid interval range");
-            }
-            return FormValidation.ok();
-        }
-    }
-
-    private String baseDirectory;
-
-    private boolean isDisabled;
+    // private Object monfile;
+    private final static int TIMEOUT = 30000;
+    private final static int MAX_TRIES = 5;
     private final String host;
     private final String name;
     private final String password;
     private final String interval;
     //private String outputPath;
     private final String fingerprint;
-    // private Object monfile;
-    private final static int TIMEOUT = 30000;
-    private final static int MAX_TRIES = 5;
-
+    private String baseDirectory;
+    private boolean isDisabled;
     // Fields in config.jelly must match the parameter names in the
     // "DataBoundConstructor"
     @DataBoundConstructor
@@ -107,6 +49,18 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         this.interval = interval;
         this.fingerprint = fingerprint;
         this.isDisabled = isDisabled;
+    }
+
+    private static String getOutputDir(String projectName, int buildID) {
+        return getBuildDir(projectName, buildID) + "/monitoring";
+    }
+
+    private static String getBuildDir(String projectName, int buildID) {
+        return getProjectDir(projectName) + "/" + buildID;
+    }
+
+    private static String getProjectDir(String projectName) {
+        return "/tmp/jenkins-perfci/jobs/" + projectName;
     }
 
     /**
@@ -129,6 +83,15 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
     }
 
     private void tryStart(String projectName, int buildId, BuildListener listener) throws IOException, InterruptedException {
+        URL currentVersionFile = getClass()
+                .getResource(
+                        "/org/jenkinsci/plugins/perfci/model/NmonMonitor/jenkins-perfci/version.txt");
+        String currentNMONVersion =
+                org.apache.commons.io.IOUtils.readLines(currentVersionFile.openStream()).get(0).trim();
+        assert !currentNMONVersion.isEmpty();
+        listener.getLogger().println(
+                "INFO: Current NMON monitoring toolkit version: " + currentNMONVersion);
+
         SSHClient client = new SSHClient();
         if (fingerprint != null && !fingerprint.isEmpty())
             client.addHostKeyVerifier(fingerprint);
@@ -146,15 +109,24 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             Session.Command cmd;
             Session session = client.startSession();
             listener.getLogger().println(
-                    "INFO: Checking existence for monitoring tools.");
+                    "INFO: Checking existence for NMON monitoring toolkit.");
             cmd = session
-                    .exec("ls -lrt /tmp/jenkins-perfci/bin/nmon /tmp/jenkins-perfci/bin/cpuload_monitor | wc -l");
+                    .exec("cat /tmp/jenkins-perfci/version.txt");
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
             session.close();
-            if (!"2".equals(IOUtils.readFully(cmd.getInputStream()).toString()
-                    .trim())) {
+
+            String installedVersion = cmd.getExitStatus() != 0 ? IOUtils.readFully(cmd.getInputStream()).toString()
+                    .trim() : null;
+            if (installedVersion == null) {
                 listener.getLogger().println(
-                        "INFO: NMON are not installed on the target server. Uploading...");
+                        "INFO: NMON monitoring toolkit was not installed .");
+            } else if (!currentNMONVersion.equals(installedVersion)) {
+                listener.getLogger().println(
+                        "INFO: NMON monitoring toolkit need to be reinstalled. Current version: " + currentNMONVersion + " / Installed version: " + installedVersion);
+            }
+            if (!currentNMONVersion.equals(installedVersion)) {
+                listener.getLogger().println(
+                        "INFO: Uploading NMON monitoring toolkit...");
                 {
                     final URL nmonfile = getClass()
                             .getResource(
@@ -189,7 +161,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                         "INFO: extracting files from 'perfci-monitor-upload.tar.gz'...");
                 session = client.startSession();
                 cmd = session
-                        .exec("cd /tmp && tar -xzvf /tmp/jenkins-perfci-upload.tar.gz");
+                        .exec("cd /tmp && rm -rf /tmp/jenkins-perfci && tar -xzvf /tmp/jenkins-perfci-upload.tar.gz");
                 cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
                 session.close();
                 if (cmd.getExitStatus() != 0) {
@@ -216,18 +188,6 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         } finally {
             client.close();
         }
-    }
-
-    private static String getOutputDir(String projectName, int buildID) {
-        return getBuildDir(projectName, buildID) + "/monitoring";
-    }
-
-    private static String getBuildDir(String projectName, int buildID) {
-        return getProjectDir(projectName) + "/" + buildID;
-    }
-
-    private static String getProjectDir(String projectName) {
-        return "/tmp/jenkins-perfci/jobs/" + projectName;
     }
 
     private void tryStop(String projectName, int buildId, String workspaceDir, BuildListener listener) throws IOException, InterruptedException {
@@ -421,5 +381,61 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
 
     public void setBaseDirectory(String baseDirectory) {
         this.baseDirectory = baseDirectory;
+    }
+
+    @Extension
+    public static class DescriptorImpl extends ResourceMonitorDescriptor {
+
+        @Override
+        public String getDisplayName() {
+            return "NMON Monitor";
+        }
+
+        public FormValidation doCheckHost(@QueryParameter String host) {
+            if (host == null || host.isEmpty()) {
+                return FormValidation.error("Host name can't be empty");
+            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckName(@QueryParameter String name) {
+            if (name == null || name.isEmpty()) {
+                return FormValidation.error("User name can't be empty");
+            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckPassword(@QueryParameter String
+                                                      password) {
+            if (password == null || password.isEmpty()) {
+                return FormValidation.ok();
+            }
+            return FormValidation.warning("Storing your SSH password to a Jenkins server is a bad practice, because other people are able to inspect your password though the source code of this web page. We recommend you to use public key authentication.");
+        }
+
+        public FormValidation doCheckFingerprint(
+                @QueryParameter String fingerprint) {
+            if (fingerprint == null || fingerprint.isEmpty()) {
+                return FormValidation.warning("If you ignore this blank, the SSH connection to your monitored host is vulnerable to a man-in-the-middle (MITM) attack.");
+            }
+            if (!Pattern.matches("[\\da-fA-F]{1,2}(?:\\:[\\da-fA-F]{1,2}){15}",
+                    fingerprint)) {
+                return FormValidation.error("Invalid fingerprint format");
+            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckInterval(@QueryParameter String interval) {
+            if (interval == null || interval.isEmpty()) {
+                return FormValidation.error("Interval can't be empty");
+            }
+            if (!Pattern.matches("\\d{1,10}", interval)) {
+                return FormValidation.error("Invalid interval format");
+            }
+            if (Integer.parseInt(interval) <= 0) {
+                return FormValidation.error("Invalid interval range");
+            }
+            return FormValidation.ok();
+        }
     }
 }
