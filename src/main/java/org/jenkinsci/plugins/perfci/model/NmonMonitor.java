@@ -115,7 +115,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
             session.close();
 
-            String installedVersion = cmd.getExitStatus() != 0 ? IOUtils.readFully(cmd.getInputStream()).toString()
+            String installedVersion = cmd.getExitStatus() == 0 ? IOUtils.readFully(cmd.getInputStream()).toString()
                     .trim() : null;
             if (installedVersion == null) {
                 listener.getLogger().println(
@@ -235,7 +235,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             cmd.join(TIMEOUT, TimeUnit.MILLISECONDS);
             session.close();
             if (cmd.getExitStatus() != 0) {
-                listener.getLogger().println("ERROR: Compress failed. Failed to call tar.");
+                listener.getLogger().println("ERROR: Compress failed. Failed to call tar. Exit code = " + cmd.getExitStatus());
                 return;
             }
 
