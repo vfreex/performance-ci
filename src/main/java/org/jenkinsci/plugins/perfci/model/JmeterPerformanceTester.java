@@ -14,7 +14,6 @@ import org.jenkinsci.plugins.perfci.common.LogDirectoryRelocatable;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
-import org.springframework.util.AntPathMatcher;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -27,57 +26,15 @@ import java.util.*;
  * Created by vfreex on 11/23/15.
  */
 public class JmeterPerformanceTester extends PerformanceTester implements LogDirectoryRelocatable, BaseDirectoryRelocatable {
-    @Extension
-    public static class DescriptorImpl extends PerformanceTester.PerformanceTesterDescriptor {
-        @Override
-        public String getDisplayName() {
-            return "Apache Jmeter";
-        }
-
-        public FormValidation doCheckJmxIncludingPattern(@QueryParameter String jmxIncludingPattern) {
-            if (jmxIncludingPattern == null || jmxIncludingPattern.isEmpty()) {
-                return FormValidation.error("This blank is required. Maybe you can simply use `**/*.jmx`.");
-            }
-//            AntPathMatcher antPathMatcher = new AntPathMatcher();
-//            if (!antPathMatcher.isPattern(jmxIncludingPattern)){
-//                return FormValidation.error("Invalid pattern format.");
-//            }
-            return FormValidation.ok();
-        }
-        public FormValidation doCheckJmxExcludingPattern(@QueryParameter String jmxExcludingPattern) {
-//            if (jmxExcludingPattern == null || jmxExcludingPattern.isEmpty()) {
-//                return FormValidation.ok();
-//            }
-//            AntPathMatcher antPathMatcher = new AntPathMatcher();
-//            if (!antPathMatcher..isPattern(jmxExcludingPattern)){
-//                return FormValidation.error("Invalid pattern format.");
-//            }
-            return FormValidation.ok();
-        }
-        public FormValidation doCheckJmeterCommand(@QueryParameter String jmeterCommand) {
-            if (jmeterCommand == null || jmeterCommand.isEmpty() || jmeterCommand.trim().isEmpty()) {
-                return FormValidation.error("This blank is required, otherwise Jmeter cannot start.");
-            }
-            return FormValidation.ok();
-        }
-        public FormValidation doCheckJmeterArgs(@QueryParameter String jmeterArgs) {
-            return FormValidation.ok();
-        }
-    }
-
     private String logDirectory;
     private String baseDirectory;
     private boolean disabled;
-
     /**
      * ANT-style wildcards
      */
     private String jmxIncludingPattern;
-
     private String jmxExcludingPattern;
-
     private String jmeterCommand;
-
     private String jmeterArgs;
 
     @DataBoundConstructor
@@ -100,9 +57,6 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
 
         final String workspaceDirFullPath = build.getWorkspace().getRemote();
 
-        new File(workspaceDirFullPath + File.separator + resultDir).mkdirs();
-        new File(workspaceDirFullPath + File.separator + jmeterLogDir).mkdirs();
-
         SimpleDateFormat dateFormatForLogName = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
         dateFormatForLogName.setTimeZone(TimeZone.getTimeZone("GMT"));
 
@@ -112,10 +66,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             // get relative path to workspace
             String fileRelativePath = new File(workspaceDirFullPath).toPath().relativize(new File(fileFullPath).toPath()).toString();
             String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
-            String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + "-" + dateFormatForLogName.format(new Date()) + ".log";
-            listener.getLogger().println("Create log file '" + logFileName + "'.");
-            File logFile = new File(workspaceDirFullPath + File.separator + logFileName);
-            logFile.createNewFile();
+            final String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + "-" + dateFormatForLogName.format(new Date()) + ".log";
             // construct command line arguments for a Jmeter execution
             final List<String> cmdArgs = new LinkedList<String>();
             cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterCommand))));
@@ -135,6 +86,16 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
 
                 @Override
                 public Object call() throws IOException {
+                    File resultDirObj = new File(workspaceDirFullPath + File.separator + resultDir);
+                    if (resultDirObj.mkdirs())
+                        listener.getLogger().println("INFO: Create directory '" + resultDirObj.getAbsolutePath() + File.separator + jmeterLogDir + "'.");
+                    File logFileDirObj = new File(workspaceDirFullPath + File.separator + jmeterLogDir);
+                    if (logFileDirObj.mkdirs())
+                        listener.getLogger().println("INFO: Create directory '" + workspaceDirFullPath + File.separator + resultDir + "'.");
+                    File logFile = new File(workspaceDirFullPath + File.separator + logFileName);
+                    if (logFile.createNewFile())
+                        listener.getLogger().println("INFO: Create log file '" + logFile.getAbsolutePath() + "'.");
+
                     listener.getLogger().printf("INFO: Launch Jmeter by executing`" + cmdArgs + "`...\n");
                     ProcessBuilder jmeterProcessBuilder = new ProcessBuilder(cmdArgs);
                     jmeterProcessBuilder.environment().putAll(env);
@@ -224,5 +185,46 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
     @Override
     public void setBaseDirectory(String baseDirectory) {
         this.baseDirectory = baseDirectory;
+    }
+
+    @Extension
+    public static class DescriptorImpl extends PerformanceTester.PerformanceTesterDescriptor {
+        @Override
+        public String getDisplayName() {
+            return "Apache Jmeter";
+        }
+
+        public FormValidation doCheckJmxIncludingPattern(@QueryParameter String jmxIncludingPattern) {
+            if (jmxIncludingPattern == null || jmxIncludingPattern.isEmpty()) {
+                return FormValidation.error("This blank is required. Maybe you can simply use `**/*.jmx`.");
+            }
+//            AntPathMatcher antPathMatcher = new AntPathMatcher();
+//            if (!antPathMatcher.isPattern(jmxIncludingPattern)){
+//                return FormValidation.error("Invalid pattern format.");
+//            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckJmxExcludingPattern(@QueryParameter String jmxExcludingPattern) {
+//            if (jmxExcludingPattern == null || jmxExcludingPattern.isEmpty()) {
+//                return FormValidation.ok();
+//            }
+//            AntPathMatcher antPathMatcher = new AntPathMatcher();
+//            if (!antPathMatcher..isPattern(jmxExcludingPattern)){
+//                return FormValidation.error("Invalid pattern format.");
+//            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckJmeterCommand(@QueryParameter String jmeterCommand) {
+            if (jmeterCommand == null || jmeterCommand.isEmpty() || jmeterCommand.trim().isEmpty()) {
+                return FormValidation.error("This blank is required, otherwise Jmeter cannot start.");
+            }
+            return FormValidation.ok();
+        }
+
+        public FormValidation doCheckJmeterArgs(@QueryParameter String jmeterArgs) {
+            return FormValidation.ok();
+        }
     }
 }
