@@ -29,6 +29,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
     private String logDirectory;
     private String baseDirectory;
     private boolean disabled;
+    private boolean noAutoJTL;
     /**
      * ANT-style wildcards
      */
@@ -38,8 +39,9 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
     private String jmeterArgs;
 
     @DataBoundConstructor
-    public JmeterPerformanceTester(boolean disabled, String jmxIncludingPattern, String jmxExcludingPattern, String jmeterCommand, String jmeterArgs) {
+    public JmeterPerformanceTester(boolean disabled, boolean noAutoJTL, String jmxIncludingPattern, String jmxExcludingPattern, String jmeterCommand, String jmeterArgs) {
         this.disabled = disabled;
+        this.noAutoJTL = noAutoJTL;
         this.jmxIncludingPattern = jmxIncludingPattern;
         this.jmxExcludingPattern = jmxExcludingPattern;
         this.jmeterCommand = jmeterCommand;
@@ -52,7 +54,7 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             return;
         }
         final EnvVars env = build.getEnvironment(listener);
-        final String resultDir = this.getBaseDirectory() == null || this.getBaseDirectory().isEmpty() ? "" : this.getBaseDirectory();
+        final String resultDir = this.getBaseDirectory() == null || this.getBaseDirectory().isEmpty() ? "." : this.getBaseDirectory();
         final String jmeterLogDir = logDirectory == null || logDirectory.isEmpty() ? resultDir : logDirectory;
 
         final String workspaceDirFullPath = build.getWorkspace().getRemote();
@@ -60,12 +62,14 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
         SimpleDateFormat dateFormatForLogName = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
         dateFormatForLogName.setTimeZone(TimeZone.getTimeZone("GMT"));
 
+
+        env.put("PERFCI_WORKING_DIR", new File(workspaceDirFullPath).toPath().relativize(new File(workspaceDirFullPath, resultDir).toPath()).toString());
+
         for (FilePath file : build.getWorkspace().list(env.expand(jmxIncludingPattern), env.expand(jmxExcludingPattern))) {
             // absolute path for each matched file
             String fileFullPath = file.getRemote();
             // get relative path to workspace
             String fileRelativePath = new File(workspaceDirFullPath).toPath().relativize(new File(fileFullPath).toPath()).toString();
-            String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
             final String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + "-" + dateFormatForLogName.format(new Date()) + ".log";
             // construct command line arguments for a Jmeter execution
             final List<String> cmdArgs = new LinkedList<String>();
@@ -74,8 +78,11 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
             cmdArgs.add("-n");
             cmdArgs.add("-t");
             cmdArgs.add(fileRelativePath);
-            cmdArgs.add("-l");
-            cmdArgs.add(resultFileName);
+            if (!noAutoJTL) {
+                String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
+                cmdArgs.add("-l");
+                cmdArgs.add(resultFileName);
+            }
             cmdArgs.add("-j");
             cmdArgs.add(logFileName);
 
@@ -88,16 +95,17 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
                 public Object call() throws IOException {
                     File resultDirObj = new File(workspaceDirFullPath + File.separator + resultDir);
                     if (resultDirObj.mkdirs())
-                        listener.getLogger().println("INFO: Create directory '" + resultDirObj.getAbsolutePath() + File.separator + jmeterLogDir + "'.");
+                        listener.getLogger().println("INFO: Create directory '" + resultDirObj.getAbsolutePath() + "'.");
                     File logFileDirObj = new File(workspaceDirFullPath + File.separator + jmeterLogDir);
                     if (logFileDirObj.mkdirs())
-                        listener.getLogger().println("INFO: Create directory '" + workspaceDirFullPath + File.separator + resultDir + "'.");
+                        listener.getLogger().println("INFO: Create directory '" + logFileDirObj.getAbsolutePath() + "'.");
                     File logFile = new File(workspaceDirFullPath + File.separator + logFileName);
                     if (logFile.createNewFile())
                         listener.getLogger().println("INFO: Create log file '" + logFile.getAbsolutePath() + "'.");
 
                     listener.getLogger().printf("INFO: Launch Jmeter by executing`" + cmdArgs + "`...\n");
                     ProcessBuilder jmeterProcessBuilder = new ProcessBuilder(cmdArgs);
+                    jmeterProcessBuilder.directory(resultDirObj);
                     jmeterProcessBuilder.environment().putAll(env);
                     jmeterProcessBuilder.redirectError(jmeterProcessBuilder.redirectOutput());
                     Process jmeter = jmeterProcessBuilder.start();
@@ -185,6 +193,14 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
     @Override
     public void setBaseDirectory(String baseDirectory) {
         this.baseDirectory = baseDirectory;
+    }
+
+    public boolean isNoAutoJTL() {
+        return noAutoJTL;
+    }
+
+    public void setNoAutoJTL(boolean noAutoJTL) {
+        this.noAutoJTL = noAutoJTL;
     }
 
     @Extension
