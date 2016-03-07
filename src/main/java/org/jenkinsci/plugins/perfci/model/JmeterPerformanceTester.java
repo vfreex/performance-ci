@@ -59,33 +59,13 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
 
         final String workspaceDirFullPath = build.getWorkspace().getRemote();
 
-        SimpleDateFormat dateFormatForLogName = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
+        final SimpleDateFormat dateFormatForLogName = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US);
         dateFormatForLogName.setTimeZone(TimeZone.getTimeZone("GMT"));
 
 
         env.put("PERFCI_WORKING_DIR", new File(workspaceDirFullPath).toPath().relativize(new File(workspaceDirFullPath, resultDir).toPath()).toString());
 
-        for (FilePath file : build.getWorkspace().list(env.expand(jmxIncludingPattern), env.expand(jmxExcludingPattern))) {
-            // absolute path for each matched file
-            String fileFullPath = file.getRemote();
-            // get relative path to workspace
-            String fileRelativePath = new File(workspaceDirFullPath).toPath().relativize(new File(fileFullPath).toPath()).toString();
-            final String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + "-" + dateFormatForLogName.format(new Date()) + ".log";
-            // construct command line arguments for a Jmeter execution
-            final List<String> cmdArgs = new LinkedList<String>();
-            cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterCommand))));
-            cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterArgs))));
-            cmdArgs.add("-n");
-            cmdArgs.add("-t");
-            cmdArgs.add(fileRelativePath);
-            if (!noAutoJTL) {
-                String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
-                cmdArgs.add("-l");
-                cmdArgs.add(resultFileName);
-            }
-            cmdArgs.add("-j");
-            cmdArgs.add(logFileName);
-
+        for (final FilePath file : build.getWorkspace().list(env.expand(jmxIncludingPattern), env.expand(jmxExcludingPattern))) {
             launcher.getChannel().call(new Callable<Object, IOException>() {
                 @Override
                 public void checkRoles(RoleChecker checker) throws SecurityException {
@@ -93,15 +73,38 @@ public class JmeterPerformanceTester extends PerformanceTester implements LogDir
 
                 @Override
                 public Object call() throws IOException {
-                    File resultDirObj = new File(workspaceDirFullPath + File.separator + resultDir);
+                    // absolute path for each matched file
+                    String fileFullPath = file.getRemote();
+                    // get relative path to workspace
+                    //String fileRelativePath = new File(workspaceDirFullPath).toPath().relativize(new File(fileFullPath).toPath()).toString();
+                    File resultDirObj = new File(workspaceDirFullPath, resultDir);
                     if (resultDirObj.mkdirs())
                         listener.getLogger().println("INFO: Create directory '" + resultDirObj.getAbsolutePath() + "'.");
-                    File logFileDirObj = new File(workspaceDirFullPath + File.separator + jmeterLogDir);
+                    File logFileDirObj = new File(workspaceDirFullPath, jmeterLogDir);
                     if (logFileDirObj.mkdirs())
                         listener.getLogger().println("INFO: Create directory '" + logFileDirObj.getAbsolutePath() + "'.");
-                    File logFile = new File(workspaceDirFullPath + File.separator + logFileName);
+                    final String logFileName = jmeterLogDir + File.separator + "jmeter-" + file.getBaseName() + "-" + dateFormatForLogName.format(new Date()) + ".log";
+                    File logFile = new File(workspaceDirFullPath, logFileName);
                     if (logFile.createNewFile())
                         listener.getLogger().println("INFO: Create log file '" + logFile.getAbsolutePath() + "'.");
+
+                    // construct command line arguments for a Jmeter execution
+                    final List<String> cmdArgs = new LinkedList<String>();
+                    cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterCommand))));
+                    cmdArgs.addAll(Arrays.asList(Commandline.translateCommandline(env.expand(jmeterArgs))));
+                    cmdArgs.add("-n");
+                    cmdArgs.add("-t");
+                    //cmdArgs.add(fileRelativePath);
+                    cmdArgs.add(resultDirObj.toPath().relativize(new File(fileFullPath).toPath()).toString());
+                    if (!noAutoJTL) {
+                        String resultFileName = resultDir + File.separator + file.getBaseName() + ".jtl";
+                        cmdArgs.add("-l");
+                        //cmdArgs.add(resultFileName);
+                        cmdArgs.add(resultDirObj.toPath().relativize(new File(workspaceDirFullPath, resultFileName).toPath()).toString());
+                    }
+                    cmdArgs.add("-j");
+                    //cmdArgs.add(logFileName);
+                    cmdArgs.add(resultDirObj.toPath().relativize(logFile.toPath()).toString());
 
                     listener.getLogger().printf("INFO: Launch Jmeter by executing`" + cmdArgs + "`...\n");
                     ProcessBuilder jmeterProcessBuilder = new ProcessBuilder(cmdArgs);

@@ -12,12 +12,12 @@
     </f:entry>
     <f:advanced>
         <f:entry title="Jmeter command" field="jmeterCommand">
-            <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw -w &quot;$PERFCI_WORKING_DIR&quot; 10.73.3.1:5000/perfci-agent jmeter" />
+            <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw -w &quot;/data/$PERFCI_WORKING_DIR&quot; 10.73.3.1:5000/perfci-agent jmeter" />
         </f:entry>
         <f:entry title="Jmeter additional arguments" field="jmeterArgs">
             <f:textbox default="-Djmeter.save.saveservice.output_format=xml" />
         </f:entry>
-        <f:entry title="Don't generate JTL file automatically" field="noAutoJTL">
+        <f:entry title="Don't generate a JTL file automatically" field="noAutoJTL">
             <f:checkbox />
         </f:entry>
     </f:advanced>
