@@ -15,7 +15,6 @@ import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.perfci.action.PerfchartsBuildReportAction;
 import org.jenkinsci.plugins.perfci.action.PerfchartsTrendReportAction;
 import org.jenkinsci.plugins.perfci.common.*;
-import org.jenkinsci.plugins.perfci.common.TaskQueue;
 import org.jenkinsci.plugins.perfci.executor.PerfchartsNewExecutor;
 import org.jenkinsci.plugins.perfci.model.PerformanceTester;
 import org.jenkinsci.plugins.perfci.model.ResourceMonitor;
@@ -79,28 +78,28 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
         final String perfchartsCommand = env.expand(this.perfchartsCommand);
 
         // start resource monitors
-        TaskQueue startMonitorTaskQueue = new TaskQueue();
+        //TaskQueue startMonitorTaskQueue = new TaskQueue();
         for (final ResourceMonitor resourceMonitor : resourceMonitors) {
-            startMonitorTaskQueue.enqueue(new Runnable() {
-                @Override
-                public void run() {
-                    if (resourceMonitor instanceof BaseDirectoryRelocatable) {
-                        ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
-                    }
-                    if (resourceMonitor instanceof ResultDirectoryRelocatable) {
-                        ((ResultDirectoryRelocatable) resourceMonitor).setResultDirectory(resultDir);
-                    }
-                    try {
-                        resourceMonitor.start(build, launcher, listener);
-                    } catch (Exception ex) {
-                        Thread t = Thread.currentThread();
-                        t.getUncaughtExceptionHandler().uncaughtException(t, ex);
-                    }
-                }
-            });
+//            startMonitorTaskQueue.enqueue(new Runnable() {
+//                @Override
+//                public void run() {
+            if (resourceMonitor instanceof BaseDirectoryRelocatable) {
+                ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
+            }
+            if (resourceMonitor instanceof ResultDirectoryRelocatable) {
+                ((ResultDirectoryRelocatable) resourceMonitor).setResultDirectory(resultDir);
+            }
+//                    try {
+            resourceMonitor.start(build, launcher, listener);
+//                    } catch (Exception ex) {
+//                        Thread t = Thread.currentThread();
+//                        t.getUncaughtExceptionHandler().uncaughtException(t, ex);
+//                    }
+//                }
+//            });
         }
-        listener.getLogger().println("INFO: Wait at most 10 minutes for resource monitors to start");
-        startMonitorTaskQueue.runAll(1000 * 60 * 10);
+        //listener.getLogger().println("INFO: Wait at most 10 minutes for resource monitors to start");
+        //startMonitorTaskQueue.runAll(1000 * 60 * 10);
         // start performance test executors
         for (PerformanceTester performanceTester : performanceTesters) {
             if (performanceTester instanceof LogDirectoryRelocatable) {
@@ -116,25 +115,25 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
         }
 
         // stop resource monitors and collect test results
-        TaskQueue stopMonitorTaskQueue = new TaskQueue();
+        //TaskQueue stopMonitorTaskQueue = new TaskQueue();
         for (final ResourceMonitor resourceMonitor : resourceMonitors) {
-            stopMonitorTaskQueue.enqueue(new Runnable() {
-                @Override
-                public void run() {
-                    if (resourceMonitor instanceof BaseDirectoryRelocatable) {
-                        ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
-                    }
-                    try {
-                        resourceMonitor.stop(build, launcher, listener);
-                    } catch (Exception ex) {
-                        Thread t = Thread.currentThread();
-                        t.getUncaughtExceptionHandler().uncaughtException(t, ex);
-                    }
-                }
-            });
+//            stopMonitorTaskQueue.enqueue(new Runnable() {
+//                @Override
+//                public void run() {
+            if (resourceMonitor instanceof BaseDirectoryRelocatable) {
+                ((BaseDirectoryRelocatable) resourceMonitor).setBaseDirectory(baseDirForBuild);
+            }
+//                    try {
+            resourceMonitor.stop(build, launcher, listener);
+//                    } catch (Exception ex) {
+//                        Thread t = Thread.currentThread();
+//                        t.getUncaughtExceptionHandler().uncaughtException(t, ex);
+//                    }
+            //  }
+            //  });
         }
-        listener.getLogger().println("INFO: Waiting at most 6 hours for resource monitors to stop and complete data transfer...");
-        stopMonitorTaskQueue.runAll(1000 * 60 * 60 * 6);
+        //listener.getLogger().println("INFO: Waiting at most 6 hours for resource monitors to stop and complete data transfer...");
+        //stopMonitorTaskQueue.runAll(1000 * 60 * 60 * 6);
 
         if (reportDisabled) {
             listener.getLogger().println("WARNING: No performance test reports will be generated according to your configuration.");

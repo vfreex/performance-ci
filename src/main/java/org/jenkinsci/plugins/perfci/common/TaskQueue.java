@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  */
 public class TaskQueue {
     private ConcurrentLinkedDeque<Runnable> tasks = new ConcurrentLinkedDeque<>();
-
     public TaskQueue() {
     }
 
@@ -22,6 +21,12 @@ public class TaskQueue {
      * @throws InterruptedException
      */
     public void runAll(long millis) throws InterruptedException {
+        Thread.UncaughtExceptionHandler h = new Thread.UncaughtExceptionHandler() {
+            public void uncaughtException(Thread th, Throwable ex) {
+                System.out.println("Uncaught exception: " + ex);
+            }
+        };
+
         int threadCount = Math.min(tasks.size(), Runtime.getRuntime().availableProcessors());
         Thread[] threads = new Thread[threadCount];
         for (int t = 0; t < threadCount; t++) {

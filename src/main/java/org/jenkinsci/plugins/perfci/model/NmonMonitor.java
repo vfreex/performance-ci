@@ -273,11 +273,6 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                 }
             }
             destGzipFile.delete();
-//            } catch (Exception ex) {
-//                listener.getLogger().println("ERROR: " + ex.toString());
-//                return false;
-//            }
-            //return true;
         } finally {
             client.close();
         }
@@ -352,12 +347,6 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                 return null;
             }
         });
-//                listener.getLogger().println("WARNING: Fail to stop NMON monitor.");
-//            }
-//        } catch (UserAuthException ex) {
-//            listener.getLogger().println("ERROR: Authentication error.");
-//        }
-//        listener.getLogger().println("ERROR: Cannot stop NMON monitor. Give up.");
     }
 
     @Override
