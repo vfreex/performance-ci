@@ -1,0 +1,15 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core"
+         xmlns:f="/lib/form">
+    <f:section title="PerfCI">
+        <f:entry title="Default Perfcharts command" field="defaultPerfchartsCommand">
+            <f:textbox />
+        </f:entry>
+        <f:entry title="Default Jmeter command" field="defaultJmeterCommand">
+            <f:textbox />
+        </f:entry>
+        <f:entry title="NMON SSH keys" field="nmonSSHKeys">
+            <f:textbox />
+        </f:entry>
+    </f:section>
+</j:jelly>

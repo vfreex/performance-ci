@@ -274,6 +274,11 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
      */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+
+        private String defaultPerfchartsCommand = "docker run --rm -v \"$WORKSPACE\":/data:rw docker-perf.eng.pek2.redhat.com:5000/perfci-agent perfcharts";
+        private String defaultJmeterCommand = "docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw -w &quot;/data/$PERFCI_WORKING_DIR&quot; docker-perf.eng.pek2.redhat.com:5000/perfci-agent jmeter";
+        private String nmonSSHKeys = "\"$HOME\"/.ssh/id_rsa,\"$HOME\"/.ssh/id_dsa";
+
         /**
          * In order to load the persisted global configuration, you have to
          * call load() in the constructor.
@@ -282,6 +287,24 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
             load();
         }
 
+        public static DescriptorImpl getDescriptor() {
+            return (DescriptorImpl) Jenkins
+                    .getInstance().getDescriptor(PerformanceTestBuilder.class);
+        }
+
+        public static List<? extends PerformanceTester.PerformanceTesterDescriptor> getPerformanceTesterDescriptors() {
+            return Jenkins
+                    .getInstance()
+                    .<PerformanceTester, PerformanceTester.PerformanceTesterDescriptor>getDescriptorList(
+                            PerformanceTester.class);
+        }
+
+        public static List<? extends ResourceMonitor.ResourceMonitorDescriptor> getResourceMonitorDescriptors() {
+            return Jenkins
+                    .getInstance()
+                    .<ResourceMonitor, ResourceMonitor.ResourceMonitorDescriptor>getDescriptorList(
+                            ResourceMonitor.class);
+        }
 
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             // Indicates that this builder can be used with all kinds of project types
@@ -297,28 +320,43 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
+            defaultPerfchartsCommand = formData.getString("defaultPerfchartsCommand");
+            defaultJmeterCommand = formData.getString("defaultJmeterCommand");
+            nmonSSHKeys = formData.getString("nmonSSHKeys");
             save();
             return super.configure(req, formData);
-        }
-
-        public List<? extends PerformanceTester.PerformanceTesterDescriptor> getPerformanceTesterDescriptors() {
-            return Jenkins
-                    .getInstance()
-                    .<PerformanceTester, PerformanceTester.PerformanceTesterDescriptor>getDescriptorList(
-                            PerformanceTester.class);
-        }
-
-        public List<? extends ResourceMonitor.ResourceMonitorDescriptor> getResourceMonitorDescriptors() {
-            return Jenkins
-                    .getInstance()
-                    .<ResourceMonitor, ResourceMonitor.ResourceMonitorDescriptor>getDescriptorList(
-                            ResourceMonitor.class);
         }
 
         public ListBoxModel doFillReportTemplateItems() {
             return new ListBoxModel(new ListBoxModel.Option("Performance baseline test", "perf-baseline"),
                     new ListBoxModel.Option("General purpose performance test", "perf-general"));
         }
+
+
+        public String getDefaultPerfchartsCommand() {
+            return defaultPerfchartsCommand;
+        }
+
+        public void setDefaultPerfchartsCommand(String defaultPerfchartsCommand) {
+            this.defaultPerfchartsCommand = defaultPerfchartsCommand;
+        }
+
+        public String getDefaultJmeterCommand() {
+            return defaultJmeterCommand;
+        }
+
+        public void setDefaultJmeterCommand(String defaultJmeterCommand) {
+            this.defaultJmeterCommand = defaultJmeterCommand;
+        }
+
+        public String getNmonSSHKeys() {
+            return nmonSSHKeys;
+        }
+
+        public void setNmonSSHKeys(String nmonSSHKeys) {
+            this.nmonSSHKeys = nmonSSHKeys;
+        }
+
     }
 
 

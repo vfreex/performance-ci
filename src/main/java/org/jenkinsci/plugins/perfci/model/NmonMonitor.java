@@ -1,5 +1,6 @@
 package org.jenkinsci.plugins.perfci.model;
 
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
@@ -13,7 +14,9 @@ import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.xfer.InMemorySourceFile;
+import org.apache.commons.jelly.util.CommandLineParser;
 import org.apache.tools.tar.TarEntry;
+import org.jenkinsci.plugins.perfci.builder.PerformanceTestBuilder;
 import org.jenkinsci.plugins.perfci.common.BaseDirectoryRelocatable;
 import org.jenkinsci.remoting.RoleChecker;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -83,7 +86,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         return interval;
     }
 
-    private void tryStart(String projectName, int buildId, BuildListener listener) throws IOException, InterruptedException {
+    private void tryStart(String projectName, int buildId, BuildListener listener, String[] sshKeys) throws IOException, InterruptedException {
         URL currentVersionFile = getClass()
                 .getResource(
                         "/org/jenkinsci/plugins/perfci/model/NmonMonitor/jenkins-perfci/version.txt");
@@ -105,9 +108,9 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                     "INFO: Connecting to host \"" + host + "\"...");
             client.connect(host);
             listener.getLogger().println("INFO: Authenticating...");
-            if (password == null || password.isEmpty())
-                client.authPublickey(name);
-            else
+            if (password == null || password.isEmpty()) {
+                client.authPublickey(name, sshKeys);
+            } else
                 client.authPassword(name, password);
             Session.Command cmd;
             Session session = client.startSession();
@@ -193,7 +196,7 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         }
     }
 
-    private void tryStop(String projectName, int buildId, String workspaceDir, BuildListener listener) throws IOException, InterruptedException {
+    private void tryStop(String projectName, int buildId, String workspaceDir, BuildListener listener, String[] sshKeys) throws IOException, InterruptedException {
         //String projectDir = getProjectDir(projectName);
         SSHClient client = new SSHClient();
         client.setConnectTimeout(TIMEOUT);
@@ -207,9 +210,9 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
                     "INFO: Connecting to host \"" + host + "\"...");
             client.connect(host);
             listener.getLogger().println("INFO: Authenticating...");
-            if (password == null || password.isEmpty())
-                client.authPublickey(name);
-            else
+            if (password == null || password.isEmpty()) {
+                client.authPublickey(name, sshKeys);
+            } else
                 client.authPassword(name, password);
             listener.getLogger().println("INFO: Try killing NMON deamon...");
             Session.Command cmd;
@@ -294,6 +297,9 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
 //        listener.getLogger().println(
 //                "INFO: Starting NMON monitor... (try " + i + " of "
 //                        + MAX_TRIES + ")");
+
+        PerformanceTestBuilder.DescriptorImpl desc = PerformanceTestBuilder.DescriptorImpl.getDescriptor();
+        final String nmonSSHkeyPath = desc.getNmonSSHKeys();
         launcher.getChannel().call(new hudson.remoting.Callable<Object, IOException>() {
             @Override
             public void checkRoles(RoleChecker checker) throws SecurityException {
@@ -302,8 +308,13 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             @Override
             public Object call() throws IOException {
                 try {
+                    EnvVars env = new EnvVars(System.getenv());
+                    String[] sshKeys = nmonSSHkeyPath.split("[,;]");
+                    for (int i = 0; i < sshKeys.length; i++) {
+                        sshKeys[i] = env.expand(sshKeys[i]);
+                    }
                     listener.getLogger().println("INFO: Starting NMON monitor...");
-                    tryStart(projectName, buildId, listener);
+                    tryStart(projectName, buildId, listener, sshKeys);
                     listener.getLogger().println("INFO: NMON monitor started.");
                 } catch (InterruptedException e) {
                     listener.getLogger().println(
@@ -329,6 +340,8 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
         final int buildId = build.number;
         final String workspaceDir = build.getWorkspace().getRemote();
         //listener.getLogger().println("INFO: Stopping NMON monitor...");
+        PerformanceTestBuilder.DescriptorImpl desc = PerformanceTestBuilder.DescriptorImpl.getDescriptor();
+        final String nmonSSHkeyPath = desc.getNmonSSHKeys();
         launcher.getChannel().call(new Callable<Object, IOException>() {
             @Override
             public void checkRoles(RoleChecker checker) throws SecurityException {
@@ -337,8 +350,13 @@ public class NmonMonitor extends ResourceMonitor implements BaseDirectoryRelocat
             @Override
             public Object call() throws IOException {
                 try {
+                    EnvVars env = new EnvVars(System.getenv());
+                    String[] sshKeys = nmonSSHkeyPath.split("[,;]");
+                    for (int i = 0; i < sshKeys.length; i++) {
+                        sshKeys[i] = env.expand(sshKeys[i]);
+                    }
                     listener.getLogger().println("INFO: Stopping NMON monitor...");
-                    tryStop(projectName, buildId, workspaceDir, listener);
+                    tryStop(projectName, buildId, workspaceDir, listener, sshKeys);
                 } catch (InterruptedException e) {
                     listener.getLogger().println(
                             "ERROR: Failed to stop NMON monitor.");
