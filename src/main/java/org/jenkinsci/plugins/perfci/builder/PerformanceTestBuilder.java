@@ -276,7 +276,7 @@ public class PerformanceTestBuilder extends Builder implements Serializable {
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
 
         private String defaultPerfchartsCommand = "docker run --rm -v \"$WORKSPACE\":/data:rw docker-perf.eng.pek2.redhat.com:5000/perfci-agent perfcharts";
-        private String defaultJmeterCommand = "docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw -w &quot;/data/$PERFCI_WORKING_DIR&quot; docker-perf.eng.pek2.redhat.com:5000/perfci-agent jmeter";
+        private String defaultJmeterCommand = "docker run --rm -v \"$WORKSPACE\":/data:rw -w /data/\"$PERFCI_WORKING_DIR\" docker-perf.eng.pek2.redhat.com:5000/perfci-agent jmeter";
         private String nmonSSHKeys = "\"$HOME\"/.ssh/id_rsa,\"$HOME\"/.ssh/id_dsa";
 
         /**
