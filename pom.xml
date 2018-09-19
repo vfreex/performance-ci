@@ -6,18 +6,21 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <!-- Baseline Jenkins version you use to build and test the plugin. Users must have this version or newer to run. -->
-    <version>1.580.1</version>
-    <relativePath/>
+    <version>2.29</version>
+    <relativePath />
   </parent>
+  <properties>
+    <jenkins.version>1.625</jenkins.version>
+  </properties>
+
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>perfci</artifactId>
-  <version>0.2.1-1</version>
+  <version>0.2.2</version>
   <packaging>hpi</packaging>
 
-  <name>PerfCI Plugin</name>
-  <description>PerfCI Plugin</description>
-  <url>https://docs.engineering.redhat.com/x/coLxAQ</url>
+  <name>Performance Testing and Monitoring Plugin</name>
+  <description>Performance Testing and Monitoring Plugin</description>
+  <url>https://github.com/vfreex/performance-ci</url>
   <licenses>
     <license>
       <name>MIT License</name>
@@ -27,7 +30,7 @@
   <developers>
     <developer>
       <id>yuxzhu</id>
-      <name>Rayson Zhu</name>
+      <name>Yuxiang Zhu</name>
       <email>yuxzhu@redhat.com</email>
     </developer>
   </developers>
@@ -54,17 +57,22 @@
     <dependency>
       <groupId>com.hierynomus</groupId>
       <artifactId>sshj</artifactId>
-      <version>0.16.0</version>
+      <version>0.26.0</version>
     </dependency>
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20131018</version>
+      <version>20180813</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
-      <version>1.2</version>
+      <version>1.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.jcraft</groupId>
+      <artifactId>jzlib</artifactId>
+      <version>1.1.3</version>
     </dependency>
   </dependencies>
   <build>
