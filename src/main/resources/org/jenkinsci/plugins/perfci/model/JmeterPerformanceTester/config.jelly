@@ -12,7 +12,7 @@
     </f:entry>
     <f:advanced>
         <f:entry title="Jmeter command" field="jmeterCommand">
-            <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw -w &quot;/data/$PERFCI_WORKING_DIR&quot; docker-perf.eng.pek2.redhat.com:5000/perfci-agent jmeter" />
+            <f:textbox default="jmeter" />
         </f:entry>
         <f:entry title="Jmeter additional arguments" field="jmeterArgs">
             <f:textbox default="-Djmeter.save.saveservice.output_format=xml" />
