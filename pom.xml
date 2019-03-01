@@ -21,7 +21,7 @@
 
     <groupId>io.github.vfreex.jenkins.plugins</groupId>
     <artifactId>perfci</artifactId>
-    <version>git diff</version>
+    <version>1.1-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>Performance Testing and Monitoring CI Plugin</name>
     <description>Performance Testing and Monitoring CI Plugin</description>
@@ -43,7 +43,7 @@
       <connection>scm:git:git://github.com/vfreex/performance-ci.git</connection>
       <developerConnection>scm:git:git@github.com:vfreex/performance-ci.git</developerConnection>
       <url>http://github.com/vfreex/performance-ci</url>
-      <tag>v1.0.1</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <dependencies>
