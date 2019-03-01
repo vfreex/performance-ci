@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
         <version>3.36</version>
-        <relativePath/>
+        <relativePath />
     </parent>
 
     <properties>
@@ -17,11 +16,12 @@
         <java.level>8</java.level>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <spotbugs.skip>true</spotbugs.skip>
     </properties>
 
     <groupId>io.github.vfreex.jenkins.plugins</groupId>
     <artifactId>perfci</artifactId>
-    <version>${revision}${changelist}</version>
+    <version>git diff</version>
     <packaging>hpi</packaging>
     <name>Performance Testing and Monitoring CI Plugin</name>
     <description>Performance Testing and Monitoring CI Plugin</description>
@@ -43,7 +43,8 @@
       <connection>scm:git:git://github.com/vfreex/performance-ci.git</connection>
       <developerConnection>scm:git:git@github.com:vfreex/performance-ci.git</developerConnection>
       <url>http://github.com/vfreex/performance-ci</url>
-    </scm>
+      <tag>v1.0.1</tag>
+  </scm>
 
     <dependencies>
         <dependency>
