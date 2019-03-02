@@ -46,7 +46,7 @@
                 <f:textbox />
             </f:entry>
             <f:entry title="Perfcharts command" field="perfchartsCommand">
-                <f:textbox default="docker run --rm -v &quot;$WORKSPACE&quot;:/data:rw docker-perf.eng.pek2.redhat.com:5000/perfci-agent perfcharts" />
+                <f:textbox default="perfcharts" />
             </f:entry>
         </f:advanced>
     </f:section>
