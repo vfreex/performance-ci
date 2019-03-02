@@ -119,7 +119,7 @@ public class TrendReportManager {
         }
         csvPrinter.flush();
 
-        PerfchartsTrendReportExecutor cgtTrend = new PerfchartsTrendReportExecutor("cgt-trend", null,
+        PerfchartsTrendReportExecutor cgtTrend = new PerfchartsTrendReportExecutor("perfcharts", null,
                 trendInputFilePath, trendDirPath, trendMonoReportPath,
                 null, null);
         int retcode = cgtTrend.run();

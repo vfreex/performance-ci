@@ -15,6 +15,7 @@ import java.util.TimeZone;
 /**
  * Created by vfreex on 11/25/15.
  */
+@Deprecated
 public class PerfchartsBuildReportExecutor extends AbstractExternalProgramExecutor implements Serializable {
     private String cgtCommand;
     private String currentDirectory;

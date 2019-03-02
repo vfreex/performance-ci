@@ -39,6 +39,8 @@ public class PerfchartsTrendReportExecutor extends AbstractExternalProgramExecut
     public int run() throws IOException, InterruptedException {
         List<String> arguments = new ArrayList<String>();
         arguments.addAll(Arrays.asList(Commandline.translateCommandline(command)));
+        arguments.add("gen");
+        arguments.add("perf-trend");
         arguments.add("-d");
         arguments.add(outputDir);
         arguments.add("-o");

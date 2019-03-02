@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
+@Deprecated
 public class PerfchartsComparisonReportExecutor extends AbstractExternalProgramExecutor {
     private final static Logger LOGGER = Logger.getLogger(PerfchartsComparisonReportExecutor.class
             .getName());
